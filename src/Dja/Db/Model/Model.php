@@ -29,7 +29,7 @@ abstract class Model implements \ArrayAccess
     /**
      * @var array
      */
-    protected static $fields;
+    protected static $fields = array();
 
     /**
      * @var EventDispatcher
@@ -233,7 +233,7 @@ abstract class Model implements \ArrayAccess
         } elseif ($metadata->isVirtual($name)) {
             if ($field->isRelation()) {
                 if (!isset($this->relationDataCache[$name])) {
-                    $this->relationDataCache[$name] = $field->getRelObject($this->data[$field->db_column]);
+                    $this->relationDataCache[$name] = $field->getRelation($this);
                 }
                 return $this->relationDataCache[$name];
             } else {
@@ -245,6 +245,7 @@ abstract class Model implements \ArrayAccess
     /**
      * @param $name
      * @param $value
+     * @throws \InvalidArgumentException
      * @throws \Exception
      */
     protected function _set($name, $value)
@@ -255,11 +256,15 @@ abstract class Model implements \ArrayAccess
             throw new \Exception("Field '{$name}' is read-only");
         }
         $value = $field->cleanValue($value);
+        if ($value === null && !$field->is_null) {
+            throw new \InvalidArgumentException("Field '{$name}' is not nullable");
+        }
         if ($metadata->isLocal($name)) {
             $this->data[$name] = $value;
         } elseif ($metadata->isVirtual($name)) {
             if ($field->isRelation()) {
-
+                $this->relationDataCache[$name] = $value;
+                $this->data[$field->db_column] = $value->__get($field->to_field);
             } else {
                 $this->data[$field->db_column] = $value;
             }
@@ -305,7 +310,7 @@ abstract class Model implements \ArrayAccess
      */
     public function __isset($name)
     {
-        return isset($this->data[$name]);
+        return isset(static::metadata()->$name);
     }
 
     /**
@@ -314,7 +319,8 @@ abstract class Model implements \ArrayAccess
      */
     public function __unset($name)
     {
-        unset($this->data[$name]);
+        //unset($this->data[$name]);
+        $this->__set($name, null);
     }
 
     /**
@@ -334,6 +340,11 @@ abstract class Model implements \ArrayAccess
      */
     public function toArray()
     {
+        foreach ($this->relationDataCache as $c) {
+            if ($c instanceof Model) {
+                dump($c->toArray());
+            }
+        }
         return $this->data;
     }
 

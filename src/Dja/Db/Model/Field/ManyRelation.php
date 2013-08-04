@@ -9,5 +9,5 @@ namespace Dja\Db\Model\Field;
 
 interface ManyRelation
 {
-    public function getRelQuery(\Dja\Db\Model\Model $model);
+    public function getRelation(\Dja\Db\Model\Model $model);
 }

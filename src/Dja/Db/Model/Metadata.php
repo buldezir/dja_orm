@@ -78,12 +78,34 @@ class Metadata
         $staticProps = $refl->getStaticProperties();
         $dbTableName = $staticProps['dbtable'];
         $this->primaryKey = $staticProps['primary'];
-        $this->fields = $staticProps['fields'];
+        $this->fields = $this->collectFieldConfig($refl);
         if ($dbTableName !== null) {
             $this->dbTableName = $dbTableName;
         }
         $this->modelClassName = $modelClass;
         $this->eventd = new EventDispatcher();
+    }
+
+    /**
+     * for model inheritance
+     * @param \ReflectionClass $refl
+     * @return array
+     */
+    protected function collectFieldConfig(\ReflectionClass $refl)
+    {
+        $fields = array();
+        $tree = array();
+        $parent = $refl;
+        while ($parent->getShortName() !== 'Model') {
+            $tree[] = $parent;
+            $parent = $parent->getParentClass();
+        }
+        $tree = array_reverse($tree);
+        foreach ($tree as $refl) {
+            $staticProps = $refl->getStaticProperties();
+            $fields = array_merge($fields, $staticProps['fields']);
+        }
+        return $fields;
     }
 
     public function addField($name, $options, $throw = false)
@@ -109,20 +131,21 @@ class Metadata
         }
         $options['name'] = $name;
         $options['ownerClass'] = $this->modelClassName;
+        /** @var Field\Base $fieldObj */
         $fieldObj = new $fieldClass($options);
         $baseClass = __NAMESPACE__ . '\\Field\\Base';
         if (!$fieldObj instanceof $baseClass) {
-            throw new \Exception('Field class must be subclass of '.$baseClass);
+            throw new \Exception('Field class must be subclass of ' . $baseClass);
         }
         $fieldObj->setMetadata($this);
         $fieldObj->init();
-        //if ($fieldObj instanceof Dja_Db_Model_Field_ManyRelationInterface) {
-        if (false) {
+        if ($fieldObj instanceof Field\ManyRelation) {
             if (array_key_exists($name, $this->_allFields)) {
                 throw new \Exception('Cant be fields with same name or db_column!');
             } else {
                 $this->_many2manyFields[$name] = $fieldObj;
                 $this->_allFields[$name] = $fieldObj;
+                $this->_virtualFields[$name] = $fieldObj;
             }
         } else {
             if ($fieldObj->isRelation()) {

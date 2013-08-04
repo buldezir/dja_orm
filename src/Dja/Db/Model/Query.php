@@ -123,6 +123,16 @@ class Query implements \Countable, \Iterator
 
     protected $forceNoCache = false;
 
+    protected $autoJoin = false;
+
+    protected $autoJoinFilter = array();
+
+    /**
+     * for many rel query
+     * @var array [$field, $model]
+     */
+    protected $relation;
+
     public function __construct(Metadata $metadata)
     {
         $this->metadata = $metadata;
@@ -143,6 +153,16 @@ class Query implements \Countable, \Iterator
     {
         // |\PDO::FETCH_PROPS_LATE
         return $this->db->query($q, \PDO::FETCH_CLASS, $this->metadata->getModelClass(), array('isNewRecord' => false));
+    }
+
+    /**
+     * @param array $a
+     * @return $this
+     */
+    public function setRelation(array $a)
+    {
+        $this->relation = $a;
+        return $this;
     }
 
     /**
@@ -171,7 +191,7 @@ class Query implements \Countable, \Iterator
         }
         $keys = array_map(array($this->db, 'quoteId'), array_keys($data));
         $values = array_map(array($this->db, 'quote'), $data);
-        $sql = "INSERT INTO ".$this->db->quoteId($this->table)." (".implode(', ', $keys).") VALUES (".implode(', ', $values).")";
+        $sql = "INSERT INTO " . $this->db->quoteId($this->table) . " (" . implode(', ', $keys) . ") VALUES (" . implode(', ', $values) . ")";
 //        dump($sql);
         $this->db->exec($sql);
         return $this->db->lastInsertId();
@@ -189,12 +209,12 @@ class Query implements \Countable, \Iterator
         }
         $set = array();
         foreach ($data as $key => $value) {
-            $set[] = $this->db->placeHold($this->db->quoteId($key).' = ?', $value);
+            $set[] = $this->db->placeHold($this->db->quoteId($key) . ' = ?', $value);
         }
         $sql = 'UPDATE ';
-        $sql .= $this->db->quoteId($this->table).' '.$this->db->quoteId('t');
+        $sql .= $this->db->quoteId($this->table) . ' ' . $this->db->quoteId('t');
         $sql .= ' ';
-        $sql .= 'SET '.implode(', ', $set);
+        $sql .= 'SET ' . implode(', ', $set);
         $sql .= ' ';
         $sql .= $this->buildWhere();
 //        dump($sql); return;
@@ -211,10 +231,90 @@ class Query implements \Countable, \Iterator
             throw new \Exception('must be WHERE conditions for delete');
         }
         $sql = 'DELETE FROM ';
-        $sql .= $this->db->quoteId($this->table).' '.$this->db->quoteId('t');
+        $sql .= $this->db->quoteId($this->table) . ' ' . $this->db->quoteId('t');
         $sql .= ' ';
         $sql .= $this->buildWhere();
         return $this->db->exec($sql);
+    }
+
+    /**
+     * @param array $data
+     * @return Model
+     */
+    public function create(array $data = array())
+    {
+        $class = $this->metadata->getModelClass();
+        /** @var Model $model */
+        $model = new $class();
+        $model->setFromArray($data);
+        if ($this->relation) {
+            $this->add($model);
+        } else {
+            $model->save();
+        }
+        return $model;
+    }
+
+    /**
+     * @return $this
+     * @throws \InvalidArgumentException
+     * @throws \Exception
+     */
+    public function remove()
+    {
+        if (!$this->relation) {
+            throw new \Exception('This is not relation set');
+        }
+        if (func_num_args() === 0) {
+            throw new \InvalidArgumentException('must be args > 0');
+        }
+        $args = func_get_args();
+        if (is_array($args[0])) {
+            $args = $args[0];
+        }
+        list($field, $parentModel) = $this->relation;
+        if ($field instanceof Field\ManyToManyRelation) {
+
+        } else {
+            $relVirtualField = $this->metadata->getField($field->to_field);
+            foreach ($args as $model) {
+                $model->__set($relVirtualField->name, null);
+                //$model->save();
+            }
+        }
+        return $this;
+    }
+
+    /**
+     * @return $this
+     * @throws \InvalidArgumentException
+     * @throws \Exception
+     */
+    public function add()
+    {
+        if (!$this->relation) {
+            throw new \Exception('This is not relation set');
+        }
+        if (func_num_args() === 0) {
+            throw new \InvalidArgumentException('must be args > 0');
+        }
+        $args = func_get_args();
+        if (is_array($args[0])) {
+            $args = $args[0];
+        }
+        list($field, $parentModel) = $this->relation;
+        if ($field instanceof Field\ManyToManyRelation) {
+
+        } else {
+            $relVirtualField = $this->metadata->getField($field->to_field);
+            foreach ($args as $model) {
+                //var_dump($field->name, $field->self_field, $field->to_field, $this->metadata->getField($field->to_field)->name);
+                $model->__set($relVirtualField->name, $parentModel);
+                //$model->__set($field->self_field, $parentModel->__get($field->to_field));
+                //$model->save();
+            }
+        }
+        return $this;
     }
 
     /**
@@ -240,7 +340,7 @@ class Query implements \Countable, \Iterator
     public function limit($limit, $offset = null)
     {
         $offset = $offset ? $offset : null;
-        $limit  = (int) $limit;
+        $limit = (int)$limit;
         $this->offset = $offset;
         $this->limit = $limit;
         return $this;
@@ -256,10 +356,10 @@ class Query implements \Countable, \Iterator
         foreach ($arguments as $lookup => $value) {
             // if exact lookuptype
             if (strpos($lookup, '__') === false) {
-                $lookupArr  = array($lookup);
+                $lookupArr = array($lookup);
                 $lookupType = 'exact';
             } else {
-                $lookupArr  = explode('__', $lookup);
+                $lookupArr = explode('__', $lookup);
                 $lookupType = array_pop($lookupArr);
             }
 
@@ -269,7 +369,7 @@ class Query implements \Countable, \Iterator
                 $colName = $lookupArr[0];
             }
             $f = $this->metadata->getField($colName)->db_column;
-            list($f, $lookupQ, $value) = $this->db->getSchema()->getLookup($lookupType, $this->db->quoteId('t.'.$f), $value);
+            list($f, $lookupQ, $value) = $this->db->getSchema()->getLookup($lookupType, $this->db->quoteId('t.' . $f), $value);
             if (is_array($value)) {
                 $value = implode(', ', $value);
             } elseif ($value instanceof Expr) {
@@ -277,9 +377,18 @@ class Query implements \Countable, \Iterator
             } else {
                 $value = $this->db->quote($value);
             }
-            $result[] = sprintf($f.' '.$lookupQ, $value);
+            $result[] = sprintf($f . ' ' . $lookupQ, $value);
         }
         return $result;
+    }
+
+    public function selectRelated()
+    {
+        $this->autoJoin = true;
+        foreach (func_get_args() as $j) {
+            $this->autoJoinFilter[] = $j;
+        }
+        return $this;
     }
 
     /**
@@ -311,9 +420,9 @@ class Query implements \Countable, \Iterator
         $args = func_get_args();
         foreach ($args as $order) {
             if ($order{0} === '-') {
-                $order = $this->db->quoteId(substr($order, 1)).' '.self::ORDER_DESCENDING;
+                $order = $this->db->quoteId(substr($order, 1)) . ' ' . self::ORDER_DESCENDING;
             } else {
-                $order = $this->db->quoteId($order).' '.self::ORDER_ASCENDING;
+                $order = $this->db->quoteId($order) . ' ' . self::ORDER_ASCENDING;
             }
             $this->order[] = $order;
         }
@@ -322,11 +431,11 @@ class Query implements \Countable, \Iterator
 
     public function buildQuery()
     {
-        $joins = $this->buildJoins();
-        $sql  = 'SELECT ';
+        $joins = $this->autoJoin ? $this->buildJoins() : '';
+        $sql = 'SELECT ';
         $sql .= $this->buildColumns();
         $sql .= ' FROM ';
-        $sql .= $this->db->quoteId($this->table).' '.$this->db->quoteId('t');
+        $sql .= $this->db->quoteId($this->table) . ' ' . $this->db->quoteId('t');
         $sql .= $joins;
         $sql .= ' ';
         $sql .= $this->buildWhere();
@@ -342,9 +451,9 @@ class Query implements \Countable, \Iterator
     {
         if ($this->limit !== null) {
             if ($this->offset) {
-                return 'LIMIT '.$this->limit.' OFFSET '.$this->offset;
+                return 'LIMIT ' . $this->limit . ' OFFSET ' . $this->offset;
             } else {
-                return 'LIMIT '.$this->limit;
+                return 'LIMIT ' . $this->limit;
             }
         } else {
             return '';
@@ -354,7 +463,7 @@ class Query implements \Countable, \Iterator
     protected function buildSort()
     {
         if (count($this->order) > 0) {
-            return 'ORDER BY '.implode(', ', $this->order).'';
+            return 'ORDER BY ' . implode(', ', $this->order) . '';
         } else {
             return '';
         }
@@ -363,7 +472,7 @@ class Query implements \Countable, \Iterator
     protected function buildWhere()
     {
         if (count($this->where) > 0) {
-            return 'WHERE ('.implode(') AND (', $this->where).')';
+            return 'WHERE (' . implode(') AND (', $this->where) . ')';
         } else {
             return '';
         }
@@ -376,13 +485,19 @@ class Query implements \Countable, \Iterator
             $join = '';
             $i = 1;
             foreach ($relFields as $field) {
+                if (!$field->canAutoJoin()) {
+                    continue;
+                }
+                if (count($this->autoJoinFilter) > 0 && !in_array($field->name, $this->autoJoinFilter)) {
+                    continue;
+                }
                 /** @var ForeignKey $field */
                 $relClass = $field->relationClass;
-                $tbl = $this->db->quoteId($relClass::metadata()->getDbTableName()).' '.$this->db->quoteId('j'.$i);
-                $on = sprintf('%s = %s', $this->db->quoteId('t.'.$field->db_column), $this->db->quoteId('j'.$i.'.'.$field->to_field));
-                $join .= ' LEFT JOIN '.$tbl.' ON '.$on;
+                $tbl = $this->db->quoteId($relClass::metadata()->getDbTableName()) . ' ' . $this->db->quoteId('j' . $i);
+                $on = sprintf('%s = %s', $this->db->quoteId('t.' . $field->db_column), $this->db->quoteId('j' . $i . '.' . $field->to_field));
+                $join .= ' LEFT JOIN ' . $tbl . ' ON ' . $on;
                 foreach ($relClass::metadata()->getDbColNames() as $rCol) {
-                    $this->columns[$field->name.'__'.$rCol] = 'j'.$i.'.'.$rCol;
+                    $this->columns[$field->name . '__' . $rCol] = 'j' . $i . '.' . $rCol;
                 }
                 $i++;
             }
@@ -397,7 +512,7 @@ class Query implements \Countable, \Iterator
         $parts = array();
 
         foreach ($this->metadata->getDbColNames() as $lCol) {
-            $this->columns[] = 't.'.$lCol;
+            $this->columns[] = 't.' . $lCol;
         }
 
         foreach ($this->columns as $alias => $colName) {
@@ -407,7 +522,7 @@ class Query implements \Countable, \Iterator
                 if (is_int($alias)) {
                     $parts[] = $this->db->quoteId($colName);
                 } else {
-                    $parts[] = $this->db->quoteId($colName).' as '.$this->db->quoteId($alias);
+                    $parts[] = $this->db->quoteId($colName) . ' as ' . $this->db->quoteId($alias);
                 }
             }
         }
@@ -446,7 +561,7 @@ class Query implements \Countable, \Iterator
             //$this->pdostatement = $this->db->query($this->queryStringCache, \PDO::FETCH_CLASS, $this->metadata->getModelClass(), array('isNewRecord' => false));
             $this->pdostatement = $this->db->query($this->queryStringCache, \PDO::FETCH_ASSOC);
             $this->rowCount = $this->pdostatement->rowCount();
-            dump('Exec ['.$this->queryStringCache.']');
+            dump('Exec [' . $this->queryStringCache . ']');
         }
         return $this->pdostatement;
     }
@@ -622,7 +737,7 @@ class Query implements \Countable, \Iterator
     protected function resetAll()
     {
         $this->queryStringCache = null;
-        $this->columns = array(self::SQL_STAR);
+        $this->columns = array();
         $this->joins = array();
         $this->where = array();
         $this->limit = null;

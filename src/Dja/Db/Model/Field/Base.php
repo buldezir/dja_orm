@@ -22,6 +22,9 @@ use Dja\Db\Model\Metadata;
  */
 class Base
 {
+    /**
+     * @var array
+     */
     protected $_options = array(
         'name'         => null,
         'ownerClass'   => null,
@@ -48,6 +51,9 @@ class Base
      */
     protected $metadata;
 
+    /**
+     * @param array $options
+     */
     public function __construct(array $options = array())
     {
         $this->setOptions($options);
@@ -66,14 +72,30 @@ class Base
         $this->metadata = $metadata;
     }
 
+    /**
+     * @param $value
+     * @return mixed
+     */
     public function cleanValue($value)
     {
         return $value;
     }
 
+    /**
+     * @param $value
+     * @return mixed
+     */
     public function dbPrepValue($value)
     {
         return $value;
+    }
+
+    /**
+     * @return bool
+     */
+    public function canAutoJoin()
+    {
+        return ($this instanceof SingleRelation);
     }
 
     /**

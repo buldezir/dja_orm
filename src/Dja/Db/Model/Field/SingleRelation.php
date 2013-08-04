@@ -9,5 +9,5 @@ namespace Dja\Db\Model\Field;
 
 interface SingleRelation
 {
-    public function getRelObject($value);
+    public function getRelation(\Dja\Db\Model\Model $model);
 }
