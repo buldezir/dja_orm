@@ -348,6 +348,24 @@ abstract class Model implements \ArrayAccess
         return $this->data;
     }
 
+    public function export()
+    {
+        $result = array();
+        foreach (static::metadata()->getLocalFields() as $field) {
+            if ($field->isRelation()) {
+                $value = $field->viewValue($this->__get($field->name));
+            } else {
+                $value = $field->viewValue($this->__get($field->db_column));
+            }
+            $name = $field->verbose_name ? $field->verbose_name : implode(' ', array_map('ucfirst', explode('_', $field->name)));
+            $result[$field->db_column] = array(
+                'name' => $name,
+                'value' => $value,
+            );
+        }
+        return $result;
+    }
+
     /**
      * @param array $data
      * @return $this

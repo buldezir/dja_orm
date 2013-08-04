@@ -73,6 +73,20 @@ class Base
     }
 
     /**
+     * @param mixed $value
+     * @return mixed
+     */
+    public function viewValue($value)
+    {
+        if ($this->choices) {
+            if (isset($this->choices[$value])) {
+                return $this->choices[$value];
+            }
+        }
+        return $value;
+    }
+
+    /**
      * @param $value
      * @return mixed
      */

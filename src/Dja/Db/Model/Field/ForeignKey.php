@@ -52,6 +52,22 @@ class ForeignKey extends Base implements SingleRelation
         $remoteClass::metadata()->addField($this->related_name, $options);
     }
 
+    /**
+     * @param \Dja\Db\Model\Model $model
+     * @return int|mixed|string
+     */
+    public function viewValue($model)
+    {
+        if (method_exists($model, '__toString')) {
+            return strval($model);
+        }
+        if (isset($model->name)) {
+            return $model->name;
+        }
+        return $model->pk;
+    }
+
+
     public function isRelation()
     {
         return true;
