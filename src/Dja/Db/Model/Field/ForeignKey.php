@@ -67,6 +67,10 @@ class ForeignKey extends Base implements SingleRelation
         return $model->pk;
     }
 
+    public function isValid($value)
+    {
+        return ((is_object($value) && $value instanceof \Dja\Db\Model\Model) || intval($value) > 0);
+    }
 
     public function isRelation()
     {

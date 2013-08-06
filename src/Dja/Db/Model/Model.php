@@ -361,6 +361,8 @@ abstract class Model implements \ArrayAccess
             $result[$field->db_column] = array(
                 'name' => $name,
                 'value' => $value,
+                'choices' => $field->choices,
+
             );
         }
         return $result;

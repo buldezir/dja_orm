@@ -146,16 +146,6 @@ class Query implements \Countable, \Iterator
     }
 
     /**
-     * @param string $q
-     * @return \Dja\Db\PdoStatement
-     */
-    public function rawQuery($q)
-    {
-        // |\PDO::FETCH_PROPS_LATE
-        return $this->db->query($q, \PDO::FETCH_CLASS, $this->metadata->getModelClass(), array('isNewRecord' => false));
-    }
-
-    /**
      * @param array $a
      * @return $this
      */
@@ -349,8 +339,9 @@ class Query implements \Countable, \Iterator
     /**
      * array('is_active__exact' => 1, 'is_superuser__exact' => F('is_staff'))
      * array('pub_date__lte' => '2006-01-01')
+     * array('user__is_active' => true)
      */
-    public function explaneArguments(array $arguments)
+    public function explaneArguments(array $arguments, $negate = false)
     {
         $result = array();
         foreach ($arguments as $lookup => $value) {
@@ -369,7 +360,7 @@ class Query implements \Countable, \Iterator
                 $colName = $lookupArr[0];
             }
             $f = $this->metadata->getField($colName)->db_column;
-            list($f, $lookupQ, $value) = $this->db->getSchema()->getLookup($lookupType, $this->db->quoteId('t.' . $f), $value);
+            list($f, $lookupQ, $value) = $this->db->getSchema()->getLookup($lookupType, $this->db->quoteId('t.' . $f), $value, $negate);
             if (is_array($value)) {
                 $value = implode(', ', $value);
             } elseif ($value instanceof Expr) {
@@ -396,6 +387,24 @@ class Query implements \Countable, \Iterator
      * @return $this
      * @throws \InvalidArgumentException
      */
+    public function exclude($arguments)
+    {
+        if (is_array($arguments)) {
+            $arguments = $this->explaneArguments($arguments, true);
+            foreach ($arguments as $cond) {
+                $this->where[] = $cond;
+            }
+        } else {
+            throw new \InvalidArgumentException("Invalid argument, array");
+        }
+        return $this;
+    }
+
+    /**
+     * @param array|string $arguments
+     * @return $this
+     * @throws \InvalidArgumentException
+     */
     public function filter($arguments)
     {
         if (is_array($arguments)) {
@@ -403,10 +412,8 @@ class Query implements \Countable, \Iterator
             foreach ($arguments as $cond) {
                 $this->where[] = $cond;
             }
-        } elseif (is_string($arguments)) {
-            $this->where[] = $arguments;
         } else {
-            throw new \InvalidArgumentException("Invalid argument, must be string or array");
+            throw new \InvalidArgumentException("Invalid argument, array");
         }
         return $this;
     }

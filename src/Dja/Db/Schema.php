@@ -39,10 +39,11 @@ abstract class Schema
      * @param $op
      * @param $escapedField
      * @param $rawValue
-     * @return array
+     * @param bool $negate
      * @throws \Exception
+     * @return array
      */
-    public function getLookup($op, $escapedField, $rawValue)
+    public function getLookup($op, $escapedField, $rawValue, $negate = false)
     {
         if (!isset($this->operators[$op])) {
             throw new \Exception("unsupported operator '{$op}'");
@@ -54,12 +55,22 @@ abstract class Schema
                 }
                 break;
             case 'contains':
-            case 'icontains':
-            case 'startswith':
-            case 'endswith':
-            case 'istartswith':
-            case 'iendswith':
                 $rawValue = '%'.$rawValue.'%';
+                break;
+            case 'icontains':
+                $rawValue = '%'.$rawValue.'%';
+                break;
+            case 'startswith':
+                $rawValue = $rawValue.'%';
+                break;
+            case 'endswith':
+                $rawValue = '%'.$rawValue;
+                break;
+            case 'istartswith':
+                $rawValue = $rawValue.'%';
+                break;
+            case 'iendswith':
+                $rawValue = '%'.$rawValue;
                 break;
             case 'iexact':
                 $escapedField = 'lower('.$escapedField.')';
@@ -69,7 +80,22 @@ abstract class Schema
                 break;
 
         }
-        return array($escapedField, $this->operators[$op], $rawValue);
+        if ($negate) {
+            switch ($op) {
+                case 'isnotnull':
+                    $op = 'isnull';
+                    $negate = false;
+                    break;
+                default:
+                    break;
+            }
+        }
+        if ($negate) {
+            $escapedField = 'NOT '.$escapedField;
+        }
+        $lookup = $this->operators[$op];
+        //$lookup = $negate ? 'NOT '.$this->operators[$op] : $this->operators[$op];
+        return array($escapedField, $lookup, $rawValue);
     }
 
     public function __construct($conn = null)
