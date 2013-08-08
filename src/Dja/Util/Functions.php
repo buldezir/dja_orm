@@ -66,6 +66,29 @@ function import($path)
 /**
  * @return string
  */
+function __()
+{
+   return '[reserved for translate]';
+}
+
+/**
+ * @return string
+ */
+function pr()
+{
+    $s = array();
+    $vars = func_get_args();
+    foreach ($vars as $v) {
+        ob_start();
+        var_dump($v);
+        $s[] = '<p>'.ob_get_clean().'</p>';
+    }
+    echo implode('', $s);
+}
+
+/**
+ * @return string
+ */
 function dumps()
 {
     $s = array();

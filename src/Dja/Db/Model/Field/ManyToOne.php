@@ -10,8 +10,9 @@ class ManyToOne extends Base implements ManyRelation
 {
     public function __construct(array $options = array())
     {
-        $this->_options['to_field']     = null;
-        $this->_options['self_field']   = null;
+        $this->_options['to_field'] = null;
+        $this->_options['self_field'] = null;
+        $this->_options['noBackwards'] = false;
 
         parent::__construct($options);
 

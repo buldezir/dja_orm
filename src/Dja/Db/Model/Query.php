@@ -179,8 +179,13 @@ class Query implements \Countable, \Iterator
         } else {
             throw new \InvalidArgumentException('$data must be array or Model inst');
         }
-        $keys = array_map(array($this->db, 'quoteId'), array_keys($data));
-        $values = array_map(array($this->db, 'quote'), $data);
+        $keys = array();
+        $values = array();
+        foreach ($data as $key => $value) {
+            $keys[] = $this->db->quoteId($key);
+            $values[] = $this->db->quote($this->metadata->getField($key)->dbPrepValue($value));
+        }
+
         $sql = "INSERT INTO " . $this->db->quoteId($this->table) . " (" . implode(', ', $keys) . ") VALUES (" . implode(', ', $values) . ")";
 //        dump($sql);
         $this->db->exec($sql);
@@ -199,6 +204,7 @@ class Query implements \Countable, \Iterator
         }
         $set = array();
         foreach ($data as $key => $value) {
+            $value = $this->metadata->getField($key)->dbPrepValue($value);
             $set[] = $this->db->placeHold($this->db->quoteId($key) . ' = ?', $value);
         }
         $sql = 'UPDATE ';
@@ -346,29 +352,36 @@ class Query implements \Countable, \Iterator
         $result = array();
         foreach ($arguments as $lookup => $value) {
             // if exact lookuptype
-            if (strpos($lookup, '__') === false) {
-                $lookupArr = array($lookup);
-                $lookupType = 'exact';
-            } else {
-                $lookupArr = explode('__', $lookup);
+            $lookupArr = explode('__', $lookup);
+            $field = $this->metadata->getField($lookupArr[0]);
+            $lookupType = end($lookupArr);
+            if ($this->db->getSchema()->issetLookup($lookupType)) {
                 $lookupType = array_pop($lookupArr);
+            } else {
+                $lookupType = 'exact';
+            }
+            if (!$field->isRelation() || $this->metadata->isLocal($lookupArr[0])) {
+                $db_column = $field->db_column;
+                $prefix = 't.';
+            } else {
+                $prefix = '';
+                $db_column_a = implode('__', $lookupArr);
+                if (!isset($this->columns[$db_column_a])) {
+                    throw new \Exception('Cant lookup for related field without selectRelated()');
+                }
+                $db_column = $this->columns[$db_column_a];
             }
 
-            if (count($lookupArr) > 1) { // if join lookup
-                throw new \Exception('Join lookups not implemented !');
-            } else {
-                $colName = $lookupArr[0];
-            }
-            $f = $this->metadata->getField($colName)->db_column;
-            list($f, $lookupQ, $value) = $this->db->getSchema()->getLookup($lookupType, $this->db->quoteId('t.' . $f), $value, $negate);
+            $value = $field->dbPrepValue($value);
+            list($db_column, $lookupQ, $value) = $this->db->getSchema()->getLookup($lookupType, $this->db->quoteId($prefix . $db_column), $value, $negate);
             if (is_array($value)) {
                 $value = implode(', ', $value);
-            } elseif ($value instanceof Expr) {
+            } elseif ($value instanceof Expr || $value instanceof Query) {
                 $value = strval($value);
             } else {
                 $value = $this->db->quote($value);
             }
-            $result[] = sprintf($f . ' ' . $lookupQ, $value);
+            $result[] = sprintf($db_column . ' ' . $lookupQ, $value);
         }
         return $result;
     }
@@ -379,6 +392,7 @@ class Query implements \Countable, \Iterator
         foreach (func_get_args() as $j) {
             $this->autoJoinFilter[] = $j;
         }
+        $this->buildJoins();
         return $this;
     }
 
@@ -454,7 +468,7 @@ class Query implements \Countable, \Iterator
         return $sql;
     }
 
-    protected function buildLimit()
+    public function buildLimit()
     {
         if ($this->limit !== null) {
             if ($this->offset) {
@@ -467,7 +481,7 @@ class Query implements \Countable, \Iterator
         }
     }
 
-    protected function buildSort()
+    public function buildSort()
     {
         if (count($this->order) > 0) {
             return 'ORDER BY ' . implode(', ', $this->order) . '';
@@ -476,7 +490,7 @@ class Query implements \Countable, \Iterator
         }
     }
 
-    protected function buildWhere()
+    public function buildWhere()
     {
         if (count($this->where) > 0) {
             return 'WHERE (' . implode(') AND (', $this->where) . ')';
@@ -485,7 +499,7 @@ class Query implements \Countable, \Iterator
         }
     }
 
-    protected function buildJoins()
+    public function buildJoins()
     {
         $relFields = $this->metadata->getRelationFields();
         if (count($relFields) > 0) {
@@ -514,7 +528,7 @@ class Query implements \Countable, \Iterator
         }
     }
 
-    protected function buildColumns()
+    public function buildColumns()
     {
         $parts = array();
 
@@ -581,20 +595,23 @@ class Query implements \Countable, \Iterator
         if (!$this->queryStringCache) {
             $this->buildQuery();
         }
+        pr('Exec [' . $this->queryStringCache . ']');
         return $this->db->query($this->queryStringCache)->fetchAll(\PDO::FETCH_ASSOC);
     }
 
     /**
-     * @return $this
-     * @throws \Exception
+     * @param $keyField
+     * @param $valueField
+     * @return array
      */
-    public function execCached()
+    public function valuesDict($keyField, $valueField)
     {
-        if ($this->forceNoCache) {
-            throw new \Exception('forceNoCache enabled');
+        $data = $this->values();
+        $result = array();
+        foreach ($data as $row) {
+            $result[$row[$keyField]] = $row[$valueField];
         }
-        $this->rowCache = $this->exec()->fetchAll();
-        return $this;
+        return $result;
     }
 
     public function noCache()
@@ -617,6 +634,20 @@ class Query implements \Countable, \Iterator
         }
     }
 
+    public function doCount()
+    {
+        $q = clone $this;
+        $q->reset(self::ORDER)->reset(self::LIMIT);
+
+        $joins = $this->autoJoin ? $q->buildJoins() : '';
+        $sql = 'SELECT COUNT(*) FROM ';
+        $sql .= $this->db->quoteId($this->table) . ' ' . $this->db->quoteId('t');
+        $sql .= $joins;
+        $sql .= ' ';
+        $sql .= $q->buildWhere();
+        dump($sql);
+    }
+
     /**
      * (PHP 5 &gt;= 5.0.0)<br/>
      * Return the current element
@@ -626,7 +657,8 @@ class Query implements \Countable, \Iterator
     public function current()
     {
         if ($this->forceNoCache) {
-            return $this->exec()->fetch();
+            $cls = $this->metadata->getModelClass();
+            return new $cls(false, $this->exec()->fetch());
         } else {
             if (!isset($this->rowCache[$this->pointer])) {
                 $cls = $this->metadata->getModelClass();
@@ -701,7 +733,7 @@ class Query implements \Countable, \Iterator
      * @param string $part
      * @return $this
      */
-    public function reset($part)
+    public function reset($part = null)
     {
         switch ($part) {
             case self::COLUMNS:
@@ -728,6 +760,8 @@ class Query implements \Countable, \Iterator
 //                break;
             case self::ORDER:
                 $this->order = array();
+                break;
+            default:
                 break;
         }
         $this->queryStringCache = null;

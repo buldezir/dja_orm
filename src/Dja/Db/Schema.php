@@ -37,6 +37,15 @@ abstract class Schema
 
     /**
      * @param $op
+     * @return bool
+     */
+    public function issetLookup($op)
+    {
+        return isset($this->operators[$op]);
+    }
+
+    /**
+     * @param $op
      * @param $escapedField
      * @param $rawValue
      * @param bool $negate

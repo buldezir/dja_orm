@@ -13,6 +13,7 @@ class ForeignKey extends Base implements SingleRelation
     {
         $this->_options['related_name'] = null; // this is name of virtual field of relationClass which link to this model or modelquery
         $this->_options['to_field'] = null;
+        $this->_options['noBackwards'] = false;
 
         $this->setOption('db_index', true);
 
@@ -32,24 +33,23 @@ class ForeignKey extends Base implements SingleRelation
         if (empty($this->related_name)) {
             $this->setOption('related_name', $this->metadata->getDbTableName() . '_set');
         }
-        $this->_setupBackwardsRelation();
+        if (!$this->noBackwards) {
+            $this->_setupBackwardsRelation();
+        }
     }
 
     protected function _setupBackwardsRelation()
     {
-//        if (!$this->related_name) {
-//            //throw new \Exception('"related_name" is required option for ForeignKey');
-//            return;
-//        }
         $ownerClass = $this->getOption('ownerClass');
-        $remoteClass = $this->getOption('relationClass');
+        $relationClass = $this->getOption('relationClass');
         $options = array(
             'ManyToOne',
             'relationClass' => $ownerClass,
             'self_field' => $this->to_field,
-            'to_field' => $this->db_column
+            'to_field' => $this->db_column,
+            'noBackwards' => true,
         );
-        $remoteClass::metadata()->addField($this->related_name, $options);
+        $relationClass::metadata()->addField($this->related_name, $options);
     }
 
     /**

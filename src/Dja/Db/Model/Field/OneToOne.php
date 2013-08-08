@@ -25,7 +25,8 @@ class OneToOne extends ForeignKey implements SingleRelation
             $options = array(
                 'OneToOne',
                 'relationClass' => $ownerClass,
-                'to_field' => $this->db_column
+                'to_field' => $this->db_column,
+                'noBackwards' => true,
             );
             $remoteClass::metadata()->addField($this->related_name, $options);
         }

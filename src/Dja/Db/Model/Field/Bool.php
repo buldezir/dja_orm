@@ -14,10 +14,33 @@ class Bool extends Base
         parent::__construct($options);
     }
 
+    /**
+     * @param $value
+     * @return bool
+     */
     public function cleanValue($value)
     {
-        return (bool) $value;
+        if (is_bool($value)) {
+            return $value;
+        }
+        switch ($value) {
+            case 't':
+            case 'True':
+            case '1':
+                return true;
+            case 'f':
+            case 'False':
+            case '0':
+                return false;
+        }
     }
 
-
+    /**
+     * @param $value
+     * @return mixed
+     */
+    public function dbPrepValue($value)
+    {
+        return $value ? '1' : '0';
+    }
 }
