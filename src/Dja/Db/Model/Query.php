@@ -515,6 +515,7 @@ class Query implements \Countable, \Iterator
                 /** @var ForeignKey $field */
                 $relClass = $field->relationClass;
                 $tbl = $this->db->quoteId($relClass::metadata()->getDbTableName()) . ' ' . $this->db->quoteId('j' . $i);
+                //$on = sprintf('%s = %s', $this->db->quoteId('t.' . $field->db_column), $this->db->quoteId('j' . $i . '.' . $field->to_field));
                 $on = sprintf('%s = %s', $this->db->quoteId('t.' . $field->db_column), $this->db->quoteId('j' . $i . '.' . $field->to_field));
                 $join .= ' LEFT JOIN ' . $tbl . ' ON ' . $on;
                 foreach ($relClass::metadata()->getDbColNames() as $rCol) {
@@ -582,7 +583,8 @@ class Query implements \Countable, \Iterator
             //$this->pdostatement = $this->db->query($this->queryStringCache, \PDO::FETCH_CLASS, $this->metadata->getModelClass(), array('isNewRecord' => false));
             $this->pdostatement = $this->db->query($this->queryStringCache, \PDO::FETCH_ASSOC);
             $this->rowCount = $this->pdostatement->rowCount();
-            dump('Exec [' . $this->queryStringCache . ']');
+            //dump('Exec [' . $this->queryStringCache . ']');
+            pr('Exec [' . $this->queryStringCache . ']');
         }
         return $this->pdostatement;
     }
@@ -634,6 +636,10 @@ class Query implements \Countable, \Iterator
         }
     }
 
+    /**
+     * make count query with current filters
+     * @return int
+     */
     public function doCount()
     {
         $q = clone $this;
@@ -645,7 +651,8 @@ class Query implements \Countable, \Iterator
         $sql .= $joins;
         $sql .= ' ';
         $sql .= $q->buildWhere();
-        dump($sql);
+        pr('Exec [' . $sql . ']');
+        return $this->db->query($sql)->fetchColumn(0);
     }
 
     /**

@@ -67,17 +67,23 @@ class Metadata
         return $this->dbTableName;
     }
 
+    /**
+     * @param string $value
+     * @return string
+     */
     public function camelCaseToUnderscore($value)
     {
         return strtolower(preg_replace('/([a-z])([A-Z])/', '$1_$2', $value));
     }
 
+    /**
+     * @param $modelClass
+     */
     public function __construct($modelClass)
     {
         $refl = new \ReflectionClass($modelClass);
         $staticProps = $refl->getStaticProperties();
         $dbTableName = $staticProps['dbtable'];
-        $this->primaryKey = $staticProps['primary'];
         $this->fields = $this->collectFieldConfig($refl);
         if ($dbTableName !== null) {
             $this->dbTableName = $dbTableName;
@@ -96,7 +102,7 @@ class Metadata
         $fields = array();
         $tree = array();
         $parent = $refl;
-        while ($parent->getShortName() !== 'Model') {
+        while ($parent && $parent->getShortName() !== 'Model') {
             $tree[] = $parent;
             $parent = $parent->getParentClass();
         }
@@ -108,7 +114,13 @@ class Metadata
         return $fields;
     }
 
-    public function addField($name, $options, $throw = false)
+    /**
+     * @param string $name
+     * @param array $options
+     * @param bool $throw
+     * @return $this
+     */
+    public function addField($name, array $options, $throw = false)
     {
         if ($throw) {
             $this->_addField($name, $options);
@@ -123,7 +135,12 @@ class Metadata
         return $this;
     }
 
-    protected function _addField($name, $options)
+    /**
+     * @param string $name
+     * @param array $options
+     * @throws \Exception
+     */
+    protected function _addField($name, array $options)
     {
         $fieldClass = array_shift($options);
         if ($fieldClass{0} !== '\\') {
@@ -180,16 +197,14 @@ class Metadata
         }
     }
 
+    /**
+     * delayed init
+     */
     public function initFields()
     {
         foreach ($this->fields as $name => $options) {
             $this->_addField($name, $options);
         }
-    }
-
-    public function getRelationModels()
-    {
-
     }
 
     /**
@@ -207,7 +222,7 @@ class Metadata
 
     /**
      *
-     * @return array Dja_Db_Model_Field_Base[]
+     * @return Field\Base[]
      */
     public function getRelationFields()
     {
@@ -220,11 +235,19 @@ class Metadata
         return $result;
     }
 
+    /**
+     * @param $key
+     * @return Field\Base
+     */
     public function __get($key)
     {
         return $this->getField($key);
     }
 
+    /**
+     * @param $key
+     * @return bool
+     */
     public function __isset($key)
     {
         return array_key_exists($key, $this->_allFields);
@@ -247,44 +270,67 @@ class Metadata
     }
 
     /**
-     *
-     * @return array Field\Base[]
+     * @return Field\Base[]
      */
     public function getFields()
     {
         return $this->_allFields;
     }
 
+    /**
+     * @return Field\Base[]
+     */
     public function getLocalFields()
     {
         return $this->_localFields;
     }
 
+    /**
+     * @return Field\Base[]
+     */
     public function getVirtualFields()
     {
         return $this->_virtualFields;
     }
 
+    /**
+     * @return Field\Base[]
+     */
     public function getMany2ManyFields()
     {
         return $this->_many2manyFields;
     }
 
+    /**
+     * @param $key
+     * @return bool
+     */
     public function isLocal($key)
     {
         return array_key_exists($key, $this->_localFields);
     }
 
+    /**
+     * @param $key
+     * @return bool
+     */
     public function isVirtual($key)
     {
         return array_key_exists($key, $this->_virtualFields);
     }
 
+    /**
+     * @param $key
+     * @return bool
+     */
     public function isM2M($key)
     {
         return array_key_exists($key, $this->_many2manyFields);
     }
 
+    /**
+     * @return array
+     */
     public function getDbColNames()
     {
         $result = array();

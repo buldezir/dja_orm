@@ -20,6 +20,7 @@ class DateTime extends Base
     public function init()
     {
         $this->attachEvents();
+        parent::init();
     }
 
     public function getDefault()

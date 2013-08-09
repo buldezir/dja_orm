@@ -26,7 +26,7 @@ class ManyToOne extends Base implements ManyRelation
 
     public function init()
     {
-        if (empty($this->self_field)) {
+        if ($this->self_field === null) {
             $this->setOption('self_field', $this->metadata->getPrimaryKey());
         }
     }

@@ -34,15 +34,15 @@ class ManyToMany extends Base implements ManyToManyRelation
 
     public function init()
     {
-        if (empty($this->to_field)) {
+        if ($this->to_field === null) {
             /** @var \Dja\Db\Model\Model $relationClass */
             $relationClass = $this->relationClass;
             $this->setOption('to_field', $relationClass::metadata()->getPrimaryKey());
         }
-        if (empty($this->self_field)) {
+        if ($this->self_field === null) {
             $this->setOption('self_field', $this->metadata->getPrimaryKey());
         }
-        if (empty($this->related_name)) {
+        if ($this->related_name === null) {
             $this->setOption('related_name', $this->metadata->getDbTableName() . '_set');
         }
         if ($this->throughClass) {

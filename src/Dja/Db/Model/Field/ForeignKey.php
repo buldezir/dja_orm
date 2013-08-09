@@ -22,15 +22,15 @@ class ForeignKey extends Base implements SingleRelation
 
     public function init()
     {
-        if (empty($this->to_field)) {
+        if ($this->to_field === null) {
             /** @var \Dja\Db\Model\Model $relationClass */
             $relationClass = $this->relationClass;
             $this->setOption('to_field', $relationClass::metadata()->getPrimaryKey());
         }
-        if (empty($this->db_column)) {
+        if ($this->db_column === null) {
             $this->setOption('db_column', $this->name . '_id');
         }
-        if (empty($this->related_name)) {
+        if ($this->related_name === null) {
             $this->setOption('related_name', $this->metadata->getDbTableName() . '_set');
         }
         if (!$this->noBackwards) {
@@ -85,7 +85,7 @@ class ForeignKey extends Base implements SingleRelation
     {
         /** @var \Dja\Db\Model\Model $relationClass */
         $relationClass = $this->relationClass;
-        $value = $model->__get($this->to_field);
+        $value = $model->__get($this->db_column);
         if (!empty($value)) {
             $inst = $relationClass::objects()->filter([$this->to_field => (int)$value])->current();
             return $inst;

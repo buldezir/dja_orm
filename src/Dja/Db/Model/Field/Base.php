@@ -57,12 +57,14 @@ class Base
     public function __construct(array $options = array())
     {
         $this->setOptions($options);
-        if (empty($this->db_column)) {
+    }
+
+    public function init()
+    {
+        if ($this->db_column === null) {
             $this->setOption('db_column', $this->name);
         }
     }
-
-    public function init(){}
 
     /**
      * @param Metadata $metadata
@@ -154,6 +156,15 @@ class Base
             default:
                 return $this->getOption($key);
         }
+    }
+
+    /**
+     * @param $key
+     * @return bool
+     */
+    public function __isset($key)
+    {
+        return $this->issetOption($key);
     }
 
     /**

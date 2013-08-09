@@ -19,11 +19,6 @@ abstract class Model implements \ArrayAccess
     /**
      * @var string
      */
-    protected static $primary;
-
-    /**
-     * @var string
-     */
     protected static $dbtable;
 
     /**
@@ -121,8 +116,10 @@ abstract class Model implements \ArrayAccess
         foreach ($relData as $rel => $data) {
             $field = static::metadata()->getField($rel);
             if ($field->isRelation()) {
-                $relClass = $field->relationClass;
-                $this->relationDataCache[$rel] = new $relClass(false, $data);
+                if ($this->_get($field->db_column)) {
+                    $relClass = $field->relationClass;
+                    $this->relationDataCache[$rel] = new $relClass(false, $data);
+                }
             }
         }
 
