@@ -33,7 +33,7 @@ function wildcard($args)
     if (substr($args, -1) === '/') {
         $args = substr($args, 0, -1);
     }
-    return explode('/', $args);
+    return array_filter(explode('/', $args));
 }
 
 /**
@@ -47,19 +47,23 @@ function import($path)
     }
     $parts = strpos($path, '.') === false ? explode('\\', $path) : explode('.', $path);
     if (strtolower($parts[0]) === 'app') {
-        $prefix = DJA_APP_PATH.DIRECTORY_SEPARATOR;
+        $prefix = DJA_APP_PATH . DIRECTORY_SEPARATOR;
         foreach ($parts as $i => $part) {
             $parts[$i] = lcfirst($part);
         }
         $parts[$i] = ucfirst($parts[$i]);
-    } else {
-        $prefix = DJA_PATH.DIRECTORY_SEPARATOR;
+        unset($parts[0]);
+    } elseif (strtolower($parts[0]) === 'dja') {
+        $prefix = DJA_PATH . DIRECTORY_SEPARATOR;
         foreach ($parts as $i => $part) {
             $parts[$i] = ucfirst($part);
         }
+    } else {
+        //return;
+        $prefix = '';
     }
-    unset($parts[0]);
-    $path = $prefix.implode(DIRECTORY_SEPARATOR, $parts).'.php';
+    //echo 'trying to load ' . $path . ' from ' . $prefix . implode(DIRECTORY_SEPARATOR, $parts) . '.php';
+    $path = $prefix . implode(DIRECTORY_SEPARATOR, $parts) . '.php';
     return require($path);
 }
 
@@ -68,7 +72,7 @@ function import($path)
  */
 function __()
 {
-   return '[reserved for translate]';
+    return '[reserved for translate]';
 }
 
 /**
@@ -81,7 +85,7 @@ function pr()
     foreach ($vars as $v) {
         ob_start();
         var_dump($v);
-        $s[] = '<p>'.ob_get_clean().'</p>';
+        $s[] = '<p>' . ob_get_clean() . '</p>';
     }
     echo implode('', $s);
 }
@@ -98,7 +102,7 @@ function dumps()
         var_dump($v);
         $s[] = ob_get_clean();
     }
-    return '<pre>'.implode('<hr>', $s).'</pre>';
+    return '<pre>' . implode('<hr>', $s) . '</pre>';
 }
 
 /**

@@ -12,21 +12,6 @@ use Dja\Db\Model\Field\ForeignKey;
 use Dja\Db\Pdo;
 use Dja\Db\PdoStatement;
 
-class Expr
-{
-    public $value;
-
-    public function __construct($value)
-    {
-        $this->value = $value;
-    }
-
-    function __toString()
-    {
-        return $this->value;
-    }
-}
-
 class Query implements \Countable, \Iterator
 {
     const SELECT = 'select';

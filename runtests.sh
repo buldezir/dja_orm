@@ -1,0 +1,1 @@
+phpunit -v --colors ./tests/
