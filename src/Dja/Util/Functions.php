@@ -38,6 +38,7 @@ function wildcard($args)
 
 /**
  * @param $path
+ * @throws Exception
  * @return mixed
  */
 function import($path)
@@ -63,8 +64,12 @@ function import($path)
         $prefix = '';
     }
     //echo 'trying to load ' . $path . ' from ' . $prefix . implode(DIRECTORY_SEPARATOR, $parts) . '.php';
-    $path = $prefix . implode(DIRECTORY_SEPARATOR, $parts) . '.php';
-    return require($path);
+    $fpath = $prefix . implode(DIRECTORY_SEPARATOR, $parts) . '.php';
+    if (file_exists($fpath)) {
+        return require($fpath);
+    } else {
+        throw new \Exception('fail to load file "'.$fpath.'" for '.$path.'');
+    }
 }
 
 /**
@@ -83,9 +88,13 @@ function pr()
     $s = array();
     $vars = func_get_args();
     foreach ($vars as $v) {
-        ob_start();
-        var_dump($v);
-        $s[] = '<p>' . ob_get_clean() . '</p>';
+        if (is_string($v)) {
+            $s[] = '<p>' . $v . '</p>';
+        } else {
+            ob_start();
+            var_export($v);
+            $s[] = '<p>' . ob_get_clean() . '</p>';
+        }
     }
     echo implode('', $s);
 }
@@ -121,3 +130,46 @@ function Expr($value)
 {
     return new Dja\Db\Model\Expr($value);
 }
+
+/**
+ * @return array
+ */
+function collectModels()
+{
+    $result = array();
+    $allClasses = get_declared_classes();
+    foreach ($allClasses as $className) {
+        $refl = new \ReflectionClass($className);
+        $parent = $refl->getParentClass();
+        if ($parent && $parent->getShortName() == 'Model') {
+            $result[] = $className;
+        }
+    }
+    return $result;
+}
+
+function initModels()
+{
+    $modelClasses = collectModels();
+    foreach ($modelClasses as $modelClass) {
+        $modelClass::metadata();
+    }
+}
+
+/**
+ * @param string $dir
+ */
+function recursiveInclude($dir)
+{
+    /** @var \SplFileInfo[] $di */
+    $di = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($dir), \RecursiveIteratorIterator::SELF_FIRST);
+    $di = new \RegexIterator($di, '/^.+\.php$/i');
+    foreach ($di as $file) {
+        if ($file->isFile()) {
+            //pr($file->getRealPath());
+            include $file->getRealPath();
+        }
+    }
+}
+
+

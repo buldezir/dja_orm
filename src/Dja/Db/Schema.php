@@ -45,8 +45,8 @@ abstract class Schema
     }
 
     /**
-     * @param $op
-     * @param $escapedField
+     * @param string $op lookup operator from $this->operators
+     * @param string $escapedField
      * @param $rawValue
      * @param bool $negate
      * @throws \Exception

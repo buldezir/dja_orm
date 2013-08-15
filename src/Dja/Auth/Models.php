@@ -21,15 +21,15 @@ use Dja\Db\Model\Model;
 class User extends Model implements AuthUser
 {
     protected static $fields = array(
-        'user_id'       => array('Auto'),
-        'email'         => array('Char'),
-        'password'      => array('Char'),
-        'full_name'    => array('Char', 'default' => ''),
-        'role_id'       => array('Int', 'default' => 1),
-        'date_added'    => array('DateTime', 'autoInsert' => true),
-        'date_updated'  => array('DateTime', 'autoUpdate' => true),
-        'is_active'     => array('Bool'),
-        'timezone'      => array('Char'),
+        'user_id' => array('Auto'),
+        'email' => array('Char'),
+        'password' => array('Char'),
+        'full_name' => array('Char', 'default' => ''),
+        'role_id' => array('Int', 'default' => 1),
+        'date_added' => array('DateTime', 'autoInsert' => true),
+        'date_updated' => array('DateTime', 'autoUpdate' => true),
+        'is_active' => array('Bool'),
+        'timezone' => array('Char'),
     );
 
     /**
@@ -80,5 +80,33 @@ class User extends Model implements AuthUser
 /*User::events()->addListener(User::EVENT_BEFORE_SAVE, function(\Symfony\Component\EventDispatcher\GenericEvent $event){
     dump(__FILE__.':'.__LINE__);
     $event->getSubject()->is_active = false;
+    $event->stopPropagation();
+});*/
+
+/**
+ * Class UserLoginLog
+ *
+ * @property int $user_id
+ * @property string $ip
+ * @property string $time
+ */
+class UserLoginLog extends Model
+{
+    protected static $fields = array(
+        'id' => array('Auto'),
+        'user_id' => array('ForeignKey', 'relationClass' => 'Dja\\Auth\\User', 'verbose_name' => 'Юзер'),
+        'ip' => array('Char'),
+        'time' => array('DateTime', 'autoInsert' => true),
+    );
+    protected static $dbtable = 'users_login_log';
+
+    public function __toString()
+    {
+        return $this->user_id . ' : ' . $this->ip . ' : ' . $this->time;
+    }
+}
+
+/*UserLoginLog::events()->addListener(Model::EVENT_BEFORE_SAVE, function(\Symfony\Component\EventDispatcher\GenericEvent $event){
+    dump(__FILE__.':'.__LINE__);
     $event->stopPropagation();
 });*/

@@ -21,6 +21,8 @@ class Provider implements ServiceProviderInterface
      */
     public function register(Application $app)
     {
+        import('dja.auth.models');
+
         if (!isset($app['auth.auth_user_class'])) {
             $app['auth.auth_user_class'] = '\\Dja\\Auth\\User';
         }

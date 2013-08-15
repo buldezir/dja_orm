@@ -42,6 +42,15 @@ class Application extends \Silex\Application
             $values['route_class'] = 'Dja\\Application\\SecureRoute';
         }
         parent::__construct($values);
+
+        $this->before(function ($request) {
+            recursiveInclude(DJA_APP_PATH.'/models');
+            initModels();
+            pr('mem usage: <b>' . (memory_get_usage(1) / 1024 / 1024) . 'mb</b> | mem peak usage: <b>' . (memory_get_peak_usage(1) / 1024 / 1024) . 'mb</b>');
+        });
+        $this->after(function ($request, $response) {
+            pr('mem usage: <b>' . (memory_get_usage(1) / 1024 / 1024) . 'mb</b> | mem peak usage: <b>' . (memory_get_peak_usage(1) / 1024 / 1024) . 'mb</b>');
+        });
     }
 
     /**

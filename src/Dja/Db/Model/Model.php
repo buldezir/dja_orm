@@ -94,6 +94,32 @@ abstract class Model implements \ArrayAccess
     }
 
     /**
+     * example:
+     * User::getAllActive($param1, $param2) -> UserHelper->getAllActive($param1, $param2)
+     *
+     * @param string $name
+     * @param array $arguments
+     * @throws \Exception
+     * @return mixed
+     */
+    public static function __callStatic($name, $arguments)
+    {
+        $cc = get_called_class();
+        $short_cc = substr($cc, strrpos($cc, '\\')+1);
+        $helperClass = '\\App\\Helpers\\'.$short_cc.'Helper';
+        try {
+            class_exists($helperClass);
+        } catch (\Exception $e) {
+            throw new \Exception('helper "'.$helperClass.'" does not exist', 0, $e);
+        }
+        $inst = $helperClass::getInstance();
+        if (!method_exists($inst, $name)) {
+            throw new \Exception('helper method "'.$helperClass.'->'.$name.'()" does not exist');
+        }
+        return call_user_func_array(array($inst, $name), $arguments);
+    }
+
+    /**
      * @param array $rawData
      * @return $this
      */
@@ -319,18 +345,6 @@ abstract class Model implements \ArrayAccess
         //unset($this->data[$name]);
         $this->__set($name, null);
     }
-
-    /**
-     *
-     * @param string $name
-     * @param array $arguments
-     */
-//    public static function __callStatic($name, $arguments)
-//    {
-//        $class = get_called_class();
-//        // TODO: вот тут запилить хэлперы для "табличных" операций
-//    }
-
 
     /**
      * @return array

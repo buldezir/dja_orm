@@ -1,0 +1,18 @@
+{
+    "name": "buldezir/dja_orm",
+    "description": "Django-like orm for php",
+    "keywords": ["php", "orm", "django"],
+    "authors": [
+        {
+            "name": "Alexander Arutyunov",
+            "email": "buldezir@gmail.com"
+        }
+    ],
+    "require": {
+        "php": ">=5.4.0",
+        "silex/silex": "1.*"
+    },
+    "autoload": {
+        "psr-0": { "Dja": "src/" }
+    }
+}
