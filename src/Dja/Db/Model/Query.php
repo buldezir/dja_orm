@@ -12,6 +12,12 @@ use Dja\Db\Model\Field\ForeignKey;
 use Dja\Db\Pdo;
 use Dja\Db\PdoStatement;
 
+/**
+ * todo: cleanup, may be extract query builder to other class
+ * fluent interface
+ * Class Query
+ * @package Dja\Db\Model
+ */
 class Query implements \Countable, \Iterator
 {
     const SELECT = 'select';
@@ -331,6 +337,11 @@ class Query implements \Countable, \Iterator
      * array('is_active__exact' => 1, 'is_superuser__exact' => F('is_staff'))
      * array('pub_date__lte' => '2006-01-01')
      * array('user__is_active' => true)
+     *
+     * @param array $arguments
+     * @param bool $negate
+     * @return array
+     * @throws \Exception
      */
     public function explaneArguments(array $arguments, $negate = false)
     {
@@ -371,6 +382,10 @@ class Query implements \Countable, \Iterator
         return $result;
     }
 
+    /**
+     * no arguments for join all, or related field names
+     * @return $this
+     */
     public function selectRelated()
     {
         $this->autoJoin = true;
@@ -382,6 +397,7 @@ class Query implements \Countable, \Iterator
     }
 
     /**
+     * where NOT *
      * @param array|string $arguments
      * @return $this
      * @throws \InvalidArgumentException
@@ -400,6 +416,7 @@ class Query implements \Countable, \Iterator
     }
 
     /**
+     * where *
      * @param array|string $arguments
      * @return $this
      * @throws \InvalidArgumentException
@@ -435,6 +452,10 @@ class Query implements \Countable, \Iterator
         return $this;
     }
 
+    /**
+     * return sql query string
+     * @return string
+     */
     public function buildQuery()
     {
         $joins = $this->autoJoin ? $this->buildJoins() : '';
@@ -453,6 +474,10 @@ class Query implements \Countable, \Iterator
         return $sql;
     }
 
+    /**
+     * limit part of sql query string
+     * @return string
+     */
     public function buildLimit()
     {
         if ($this->limit !== null) {
@@ -466,6 +491,10 @@ class Query implements \Countable, \Iterator
         }
     }
 
+    /**
+     * order by part of sql query string
+     * @return string
+     */
     public function buildSort()
     {
         if (count($this->order) > 0) {
@@ -475,6 +504,10 @@ class Query implements \Countable, \Iterator
         }
     }
 
+    /**
+     * where part of sql query string
+     * @return string
+     */
     public function buildWhere()
     {
         if (count($this->where) > 0) {
@@ -484,6 +517,11 @@ class Query implements \Countable, \Iterator
         }
     }
 
+    /**
+     * setup select columns and
+     * joins part of sql query string
+     * @return string
+     */
     public function buildJoins()
     {
         $relFields = $this->metadata->getRelationFields();
@@ -514,6 +552,10 @@ class Query implements \Countable, \Iterator
         }
     }
 
+    /**
+     * select part of sql query string
+     * @return string
+     */
     public function buildColumns()
     {
         $parts = array();
@@ -537,26 +579,7 @@ class Query implements \Countable, \Iterator
     }
 
     /**
-     * @return mixed
-     * @throws \BadMethodCallException
-     */
-    /*protected function bind()
-    {
-        $args = func_get_args();
-        if (count($args) < 2) {
-            throw new \BadMethodCallException('Must be string and minimum 1 argument');
-        }
-        $string = array_shift($args);
-        if (substr_count($string, '?') != count($args)) {
-            throw new \BadMethodCallException('Number or placeholders didnt match with number of parameters');
-        }
-        foreach ($args as $value) {
-            $string = substr_replace($string, $value, strpos($string, '?'), 1);
-        }
-        return $string;
-    }*/
-
-    /**
+     * lazy-load execution of sql query
      * @return PdoStatement|null|\PDOStatement
      */
     protected function exec()
@@ -575,6 +598,7 @@ class Query implements \Countable, \Iterator
     }
 
     /**
+     * returns array like from fetchAssoc, not iterator of models, from current query
      * @return array
      */
     public function values()
@@ -587,6 +611,7 @@ class Query implements \Countable, \Iterator
     }
 
     /**
+     * returns key-value dictionary, from current query
      * @param $keyField
      * @param $valueField
      * @return array
@@ -601,6 +626,10 @@ class Query implements \Countable, \Iterator
         return $result;
     }
 
+    /**
+     * force disabling caching records for multiple iterations
+     * @return $this
+     */
     public function noCache()
     {
         $this->forceNoCache = true;
@@ -608,6 +637,7 @@ class Query implements \Countable, \Iterator
     }
 
     /**
+     * do nothing or returns clone of current Query without filtering
      * @return $this
      */
     public function all()
@@ -644,7 +674,7 @@ class Query implements \Countable, \Iterator
      * (PHP 5 &gt;= 5.0.0)<br/>
      * Return the current element
      * @link http://php.net/manual/en/iterator.current.php
-     * @return mixed Can return any type.
+     * @return Model
      */
     public function current()
     {
@@ -654,7 +684,7 @@ class Query implements \Countable, \Iterator
         } else {
             if (!isset($this->rowCache[$this->pointer])) {
                 $cls = $this->metadata->getModelClass();
-                $this->rowCache[$this->pointer] = new $cls(false, $this->exec()->fetch());
+                $this->rowCache[$this->pointer] = new $cls($this->exec()->fetch(), false);
             }
             return $this->rowCache[$this->pointer];
         }
@@ -722,6 +752,7 @@ class Query implements \Countable, \Iterator
     }
 
     /**
+     * reset custom part of query and reset sql string, statement, row cache
      * @param string $part
      * @return $this
      */
@@ -765,6 +796,7 @@ class Query implements \Countable, \Iterator
     }
 
     /**
+     * equal to return new self($this->metadata);
      * @return $this
      */
     protected function resetAll()

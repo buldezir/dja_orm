@@ -62,6 +62,7 @@ abstract class Model implements \ArrayAccess
     protected $relationDataCache = array();
 
     /**
+     * current model metadata
      * @return Metadata
      */
     public static function metadata()
@@ -70,6 +71,8 @@ abstract class Model implements \ArrayAccess
     }
 
     /**
+     * new queryset
+     * an iterator represents db rows
      * @return Query
      */
     public static function objects()
@@ -94,6 +97,7 @@ abstract class Model implements \ArrayAccess
     }
 
     /**
+     * todo: discuss about mechanics and usage of helpers
      * example:
      * User::getAllActive($param1, $param2) -> UserHelper->getAllActive($param1, $param2)
      *
@@ -120,6 +124,8 @@ abstract class Model implements \ArrayAccess
     }
 
     /**
+     * receive array of raw data and combine it to local values and related objects
+     * basicaly for Model::objects()->selectRelated() auto joins
      * @param array $rawData
      * @return $this
      */
@@ -155,29 +161,32 @@ abstract class Model implements \ArrayAccess
     }
 
     /**
+     * @param array $data
      * @param bool $isNewRecord
-     * @param array $rawData
+     * @return \Dja\Db\Model\Model
      */
-    final public function __construct($isNewRecord = true, array $rawData = array())
+    final public function __construct(array $data = array(), $isNewRecord = true)
     {
         $this->isNewRecord = $isNewRecord;
-        //$this->cleanData = $this->data;
-        $this->init();
         static::metadata();
         if (!$isNewRecord) {
-            $this->hydrate($rawData);
+            $this->hydrate($data);
+        } else {
+            $this->setFromArray($data);
         }
+        $this->init();
         $this->inited = true;
     }
 
     /**
-     *
+     *  for overriding
      */
     protected function init()
     {
     }
 
     /**
+     * dispatch local and global model events
      * @param string $eventName
      * @return Event
      */
@@ -193,20 +202,29 @@ abstract class Model implements \ArrayAccess
     }
 
     /**
-     *
+     * set defaults from metadata
+     * @param bool $force force default even if value exists
+     */
+    protected function setDefaultValues($force = false)
+    {
+        foreach (static::metadata()->getLocalFields() as $field) {
+            if ($field->default !== null) {
+                if ($force === true || !isset($this->data[$field->db_column])) {
+                    $this->data[$field->db_column] = $field->default;
+                }
+            }
+        }
+    }
+
+    /**
+     * insert new, or update existed
      */
     public function save()
     {
         if (!$this->eventDispatch(self::EVENT_BEFORE_SAVE)->isPropagationStopped()) {
             if ($this->isNewRecord) {
                 // set default data if saving new record
-                foreach (static::metadata()->getLocalFields() as $field) {
-                    if ($field->default !== null) {
-                        if (!isset($this->data[$field->db_column])) {
-                            $this->data[$field->db_column] = $field->default;
-                        }
-                    }
-                }
+                $this->setDefaultValues();
                 $newPK = static::objects()->insert($this);
                 $this->data[static::metadata()->pk->db_column] = $newPK;
                 $this->cleanData = $this->data;
@@ -223,7 +241,7 @@ abstract class Model implements \ArrayAccess
     }
 
     /**
-     *
+     *  delete object from database
      */
     public function delete()
     {
@@ -233,6 +251,18 @@ abstract class Model implements \ArrayAccess
         }
     }
 
+    /**
+     * reset changed data
+     */
+    public function reset()
+    {
+        $this->data = $this->cleanData;
+    }
+
+    /**
+     * reload object data from database
+     * @throws \Exception
+     */
     public function refresh()
     {
         if ($this->isNewRecord()) {
