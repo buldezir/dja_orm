@@ -6,6 +6,12 @@
  */
 namespace Dja\Db\Model\Field;
 
+/**
+ * basic usage - as auto backwards relation of ForeignKey
+ *
+ * Class ManyToOne
+ * @package Dja\Db\Model\Field
+ */
 class ManyToOne extends Base implements ManyRelation
 {
     public function __construct(array $options = array())

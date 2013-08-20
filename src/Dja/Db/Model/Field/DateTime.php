@@ -7,6 +7,15 @@
 
 namespace Dja\Db\Model\Field;
 
+/**
+ * Class DateTime
+ * @package Dja\Db\Model\Field
+ *
+ * datetime for mysql, timestamp for postgresql
+ *
+ * @property bool $autoInsert  set current time when inserting new row
+ * @property bool $autoUpdate  set current time when updating row
+ */
 class DateTime extends Base
 {
     public function __construct(array $options = array())
@@ -41,7 +50,7 @@ class DateTime extends Base
         $class = $this->ownerClass;
         $field = $this;
         $this->metadata->events()->addListener($class::EVENT_BEFORE_SAVE, function(\Symfony\Component\EventDispatcher\GenericEvent $event)use($field){
-            /** @var \My\Db\Model\Model $model */
+            /** @var \Dja\Db\Model\Model $model */
             $model = $event->getSubject();
             $fieldName = $field->db_column;
             if ($field->autoInsert === true) {

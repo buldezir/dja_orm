@@ -17,6 +17,9 @@ class OneToOne extends ForeignKey implements SingleRelation
         parent::init();
     }
 
+    /**
+     * modify related model metadata to setup virtual field pointing to this model
+     */
     protected function _setupBackwardsRelation()
     {
         $ownerClass = $this->getOption('ownerClass');

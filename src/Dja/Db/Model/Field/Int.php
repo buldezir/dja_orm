@@ -7,6 +7,11 @@
 
 namespace Dja\Db\Model\Field;
 
+/**
+ * Class Int
+ * @package Dja\Db\Model\Field
+ *
+ */
 class Int extends Base
 {
     public function __construct(array $options = array())
@@ -17,7 +22,7 @@ class Int extends Base
 
     public function isValid($value)
     {
-        if (intval($value) == $value) {
+        if (strval(intval($value)) === strval($value)) { // may be this is wtf
             return true;
         }
         return false;

@@ -7,6 +7,13 @@
 
 namespace Dja\Db\Model\Field;
 
+/**
+ * Class ForeignKey
+ * @package Dja\Db\Model\Field
+ *
+ * @property string $to_field  field name in rel table
+ * @property string $related_name  name for backwards relation
+ */
 class ForeignKey extends Base implements SingleRelation
 {
     public function __construct(array $options = array())
@@ -15,9 +22,9 @@ class ForeignKey extends Base implements SingleRelation
         $this->_options['to_field'] = null;
         $this->_options['noBackwards'] = false;
 
-        $this->setOption('db_index', true);
-
         parent::__construct($options);
+
+        $this->setOption('db_index', true); // always index this col (?)
     }
 
     public function init()
@@ -38,6 +45,9 @@ class ForeignKey extends Base implements SingleRelation
         }
     }
 
+    /**
+     * modify related model metadata to setup virtual field pointing to this model queryset
+     */
     protected function _setupBackwardsRelation()
     {
         $ownerClass = $this->getOption('ownerClass');

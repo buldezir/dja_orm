@@ -7,6 +7,12 @@
 
 namespace Dja\Db\Model\Field;
 
+/**
+ * Class TimeStamp
+ * @package Dja\Db\Model\Field
+ *
+ * @deprecated
+ */
 class TimeStamp extends Base
 {
     public function __construct(array $options = array())
@@ -29,7 +35,7 @@ class TimeStamp extends Base
         $class = $this->ownerClass;
         $field = $this;
         $this->metadata->events()->addListener($class::EVENT_BEFORE_SAVE, function(\Symfony\Component\EventDispatcher\GenericEvent $event)use($field){
-            /** @var \My\Db\Model\Model $model */
+            /** @var \Dja\Db\Model\Model $model */
             $model = $event->getSubject();
             $fieldName = $field->db_column;
             if ($field->autoInsert === true) {

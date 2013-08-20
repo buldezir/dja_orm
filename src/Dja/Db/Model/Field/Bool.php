@@ -7,6 +7,12 @@
 
 namespace Dja\Db\Model\Field;
 
+/**
+ * Class Bool
+ * @package Dja\Db\Model\Field
+ *
+ * tinyint for mysql, bool for postgresql
+ */
 class Bool extends Base
 {
     public function __construct(array $options = array())

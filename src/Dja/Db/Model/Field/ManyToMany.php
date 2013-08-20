@@ -7,6 +7,18 @@
 
 namespace Dja\Db\Model\Field;
 
+/**
+ * Class ManyToMany
+ * @package Dja\Db\Model\Field
+ *
+ * @property string $to_field  field name in rel table
+ * @property string $self_field  field name in self table
+ * @property string $related_name  name for backwards relation
+ * @property array $limit_choices_to  filter for rel queryset
+ * @property string $db_table  name of table for storing relations, if throughClass not defined
+ * @property \Dja\Db\Model\Model $throughClass  model for storing relations
+ *
+ */
 class ManyToMany extends Base implements ManyToManyRelation
 {
     public function __construct(array $options = array())
@@ -54,6 +66,9 @@ class ManyToMany extends Base implements ManyToManyRelation
         }
     }
 
+    /**
+     * modify related model metadata to setup virtual field pointing to this model queryset
+     */
     protected function _setupBackwardsRelation()
     {
         $ownerClass = $this->getOption('ownerClass');
@@ -96,7 +111,7 @@ class ManyToMany extends Base implements ManyToManyRelation
             $in = Expr($sql);
         }
 
-        if (count($in) > 0) {
+        if ($in instanceof \Dja\Db\Model\Expr || count($in) > 0) { // ?! bad code
             $inst = $relationClass::objects()->filter([$this->to_field . '__in' => $in]);
             if ($this->limit_choices_to) {
                 $inst->filter($this->limit_choices_to);

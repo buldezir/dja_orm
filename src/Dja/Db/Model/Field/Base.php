@@ -19,6 +19,11 @@ use Dja\Db\Model\Metadata;
  * @property bool $is_null
  * @property bool $is_unique
  * @property array $choices
+ *
+ * @property \Dja\Db\Model\Model $ownerClass
+ * @property \Dja\Db\Model\Model $relationClass
+ *
+ *
  */
 class Base
 {
@@ -59,6 +64,9 @@ class Base
         $this->setOptions($options);
     }
 
+    /**
+     * for overriding
+     */
     public function init()
     {
         if ($this->db_column === null) {
@@ -75,6 +83,7 @@ class Base
     }
 
     /**
+     * return value for displaying, for example integer timestamp as datetime string
      * @param mixed $value
      * @return mixed
      */
@@ -89,6 +98,7 @@ class Base
     }
 
     /**
+     * php representation of value
      * @param $value
      * @return mixed
      */
@@ -98,6 +108,7 @@ class Base
     }
 
     /**
+     * value stored in db
      * @param $value
      * @return mixed
      */
@@ -107,6 +118,7 @@ class Base
     }
 
     /**
+     * can Query use auto join (selectRelated) for this field
      * @return bool
      */
     public function canAutoJoin()
@@ -116,7 +128,6 @@ class Base
 
     /**
      * if this field is relation object
-     *
      * @return bool
      */
     public function isRelation()
@@ -136,7 +147,7 @@ class Base
 
     /**
      * return field-specific default value
-     * @return unknown_type
+     * @return mixed
      */
     public function getDefault()
     {
@@ -146,7 +157,7 @@ class Base
     /**
      * easy access to options
      * @param $key
-     * @return anytype
+     * @return mixed
      */
     public function __get($key)
     {

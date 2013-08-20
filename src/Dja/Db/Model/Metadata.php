@@ -54,6 +54,8 @@ class Metadata
     }
 
     /**
+     * return manual setted or generate table name
+     * User -> users, UserRole -> user_roles
      * @return null|string
      */
     public function getDbTableName()

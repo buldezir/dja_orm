@@ -147,6 +147,7 @@ class Query implements \Countable, \Iterator
     }
 
     /**
+     * $this->setRawSql('SELECT * FROM table')->values() === $db->query('SELECT * FROM table')->fetchAll()
      * @param $s
      * @return $this
      */
@@ -255,6 +256,7 @@ class Query implements \Countable, \Iterator
         if (func_num_args() === 0) {
             throw new \InvalidArgumentException('must be args > 0');
         }
+        /** @var Model[] $args */
         $args = func_get_args();
         if (is_array($args[0])) {
             $args = $args[0];
@@ -285,6 +287,7 @@ class Query implements \Countable, \Iterator
         if (func_num_args() === 0) {
             throw new \InvalidArgumentException('must be args > 0');
         }
+        /** @var Model[] $args */
         $args = func_get_args();
         if (is_array($args[0])) {
             $args = $args[0];
@@ -312,7 +315,9 @@ class Query implements \Countable, \Iterator
     public function get($value)
     {
         $pk = $this->metadata->getPrimaryKey();
-        $obj = $this->resetAll()->filter([$pk => (int)$value])->current();
+        /** @var Query $qs */
+        $qs = $this->resetAll()->filter([$pk => intval($value)]);
+        $obj = $qs->current();
         if (!$obj) {
             throw new \Exception('Not found');
         }
@@ -417,7 +422,7 @@ class Query implements \Countable, \Iterator
 
     /**
      * where *
-     * @param array|string $arguments
+     * @param $arguments
      * @return $this
      * @throws \InvalidArgumentException
      */
