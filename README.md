@@ -61,3 +61,52 @@ $role1->users_set->add(new User(), $user1);
 $user1->role = $role1;
 $user1->save();
 ```
+**U can write your own fields**
+```php
+class JsonField extends BaseField
+{
+    public function cleanValue($value)
+    {
+        return is_array($value) ? $value : json_decode($value);
+    }
+
+    public function dbPrepValue($value)
+    {
+        return json_encode($value);
+    }
+    
+    public function getDefault()
+    {
+        return [];
+    }
+}
+class TestModel
+{
+    protected static $fields = array(
+        ...
+        'options' => array('JsonField'),
+    );
+}
+$obj = new TestModel;
+$obj->options['ololo'] = 'jjjjjj';
+$obj->save(); // will store json string in text field
+```
+**And getters and setters of course**
+```php
+class TestModel2 extends TestModel
+{
+    ...
+    public function setOptions($value)
+    {
+        if (!is_array($value)) {
+            throw new \Exception('GTFO');
+        }
+        $this->_set('options', $value);
+    }
+    
+    public function getOptions()
+    {
+        return array_merge($this->_get('options'), get_global_options());
+    }
+}
+```
