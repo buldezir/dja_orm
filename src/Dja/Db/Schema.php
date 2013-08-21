@@ -112,7 +112,7 @@ abstract class Schema
         if ($conn) {
             $this->db = $conn;
         } else {
-            $this->db = \Application::getInstance()->db();
+            $this->db = Pdo::getDefault();
         }
     }
 

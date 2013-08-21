@@ -128,7 +128,7 @@ class Query implements \Countable, \Iterator
     {
         $this->metadata = $metadata;
         $this->table = $metadata->getDbTableName();
-        $this->db = Application::getInstance()->db();
+        $this->db = Pdo::getDefault();
     }
 
     public function __toString()

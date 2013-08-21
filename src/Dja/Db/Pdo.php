@@ -6,9 +6,32 @@
  */
 namespace Dja\Db;
 
+/**
+ * Class Pdo
+ * @package Dja\Db
+ *
+ * usage
+ * $conn = new Pdo(...);
+ * $conn->setAsDefault();
+ * somewhere else in code
+ * Pdo::getDefault()->query(...)
+ */
 class Pdo extends \PDO
 {
+    /**
+     * @var Pdo
+     */
+    protected static $defaultConn;
+
     protected $schema;
+
+    /**
+     * @return Pdo
+     */
+    public static function getDefault()
+    {
+        return self::$defaultConn;
+    }
 
     public function __construct($dsn, $username = null, $passwd = null, $options = array())
     {
@@ -17,6 +40,14 @@ class Pdo extends \PDO
         $this->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
         $this->setAttribute(\PDO::ATTR_DEFAULT_FETCH_MODE, \PDO::FETCH_ASSOC);
         $this->schema = Schema::factory($this);
+    }
+
+    /**
+     * set current conn as default
+     */
+    public function setAsDefault()
+    {
+        self::$defaultConn = $this;
     }
 
     /**
