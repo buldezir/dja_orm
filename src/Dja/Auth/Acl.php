@@ -10,9 +10,6 @@ class Acl
 {
     const ALL = '*';
     const ANONYMOUS = 0;
-    const MANAGER = 2;
-    const SUPERVISER = 4;
-    const ADMIN_COMPANY = 8;
     const ADMIN_GLOBAL = 16;
 
     protected static $rules = array();
@@ -26,10 +23,7 @@ class Acl
     {
         return array(
             self::ANONYMOUS => 'Anonymous',
-            self::MANAGER => 'Manager',
-            self::SUPERVISER => 'Superviser',
-            self::ADMIN_COMPANY => 'Company admin',
-            self::ADMIN_GLOBAL => 'Cspro admin',
+            self::ADMIN_GLOBAL => 'Admin',
         );
     }
 
