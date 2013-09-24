@@ -62,6 +62,11 @@ abstract class Model implements \ArrayAccess
     protected $relationDataCache = array();
 
     /**
+     * @var array
+     */
+    protected $validationErrors = array();
+
+    /**
      * current model metadata
      * @return Metadata
      */
@@ -204,6 +209,7 @@ abstract class Model implements \ArrayAccess
     /**
      * set defaults from metadata
      * @param bool $force force default even if value exists
+     * @return $this
      */
     protected function setDefaultValues($force = false)
     {
@@ -211,6 +217,48 @@ abstract class Model implements \ArrayAccess
             if ($field->default !== null) {
                 if ($force === true || !isset($this->data[$field->db_column])) {
                     $this->data[$field->db_column] = $field->default;
+                }
+            }
+        }
+        return $this;
+    }
+
+    /**
+     * @param $field
+     * @param $errors
+     * @return $this
+     */
+    protected function addValidationError($field, $errors)
+    {
+        if (!isset($this->validationErrors[$field])) {
+            $this->validationErrors[$field] = array();
+        }
+        if (is_array($errors)) {
+            foreach ($errors as $err) {
+                $this->validationErrors[$field][] = $err;
+            }
+        } else {
+            $this->validationErrors[$field][] = $errors;
+        }
+        return $this;
+    }
+
+    /**
+     *
+     */
+    protected function validate()
+    {
+        foreach ($this->data as $key => $value) {
+            $field = static::metadata()->getField($key);
+            try {
+                $field->validate($value);
+            } catch (ValidationError $e) {
+                $this->addValidationError($field->name, $e->getMessages());
+            } catch (\Exception $e) {
+                $this->addValidationError($field->name, $e->getMessage());
+                $prev = $e;
+                while ($prev = $prev->getPrevious()) {
+                    $this->addValidationError($field->name, $prev->getMessage());
                 }
             }
         }

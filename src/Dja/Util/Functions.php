@@ -172,4 +172,38 @@ function recursiveInclude($dir)
     }
 }
 
+/**
+ * @return array
+ */
+function smallPhpInfo()
+{
+    return array(
+        'version' => PHP_VERSION,
+        'memory' => formatBytes(memory_get_usage(1), ' '),
+        'url' => $_SERVER['REQUEST_URI'],
+        'file' => $_SERVER['SCRIPT_FILENAME'],
+        'modules' => get_loaded_extensions(),
+    );
+}
 
+/**
+ * @param int $n
+ * @param string $sep
+ * @return string
+ */
+function formatBytes($n, $sep = '')
+{
+    $gbDiv = pow(1024, 3);
+    $mbDiv = pow(1024, 2);
+    $kbDiv = 1024;
+    if ($n > $gbDiv) {
+        return round($n/$gbDiv, 3).$sep.'Gb';
+    }
+    if ($n > $mbDiv) {
+        return round($n/$mbDiv, 3).$sep.'Mb';
+    }
+    if ($n > $kbDiv) {
+        return round($n/$kbDiv, 3).$sep.'Kb';
+    }
+    return $n.$sep.'B';
+}

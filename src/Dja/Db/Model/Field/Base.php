@@ -146,6 +146,17 @@ class Base
     }
 
     /**
+     * @param $value
+     * @throws \Exception
+     */
+    public function validate($value)
+    {
+        if (!$this->isValid($value)) {
+            throw new \Exception('Value is not valid');
+        }
+    }
+
+    /**
      * return field-specific default value
      * @return mixed
      */

@@ -23,9 +23,26 @@ class Char extends Base
 
     public function isValid($value)
     {
-        if (is_string($value) && strlen($value) <= $this->getOption('max_length')) { // todo: may be mb_strlen ?
+        if (is_string($value) && strlen($value) > $this->getOption('max_length')) { // todo: may be mb_strlen ?
             return true;
         }
         return false;
     }
+
+    public function validate($value)
+    {
+        $msgs = array();
+        if (!is_string($value)) {
+            $msgs[] = 'Value is not string';
+        } else {
+            if (strlen($value) > $this->getOption('max_length')) {
+                $msgs[] = 'Value length is > '.$this->getOption('max_length');
+            }
+        }
+        if (count($msgs) > 0) {
+            throw new \Dja\Db\Model\ValidationError($msgs);
+        }
+    }
+
+
 }
