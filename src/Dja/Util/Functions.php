@@ -132,6 +132,7 @@ function Expr($value)
 }
 
 /**
+ * todo: add model inheritance support
  * @return array
  */
 function collectModels()
