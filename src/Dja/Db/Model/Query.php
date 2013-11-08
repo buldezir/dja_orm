@@ -7,7 +7,6 @@
 
 namespace Dja\Db\Model;
 
-use Dja\Application\Application;
 use Dja\Db\Model\Field\ForeignKey;
 use Dja\Db\Pdo;
 use Dja\Db\PdoStatement;

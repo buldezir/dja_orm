@@ -10,7 +10,7 @@
     ],
     "require": {
         "php": ">=5.4.0",
-        "silex/silex": "1.*"
+        "doctrine/dbal": "*"
     },
     "autoload": {
         "psr-0": { "Dja": "src/" }

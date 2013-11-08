@@ -1,1 +1,2 @@
-phpunit -v --colors ./tests/
+cd ./tests/
+phpunit -v ./
