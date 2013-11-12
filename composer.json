@@ -10,9 +10,11 @@
     ],
     "require": {
         "php": ">=5.4.0",
-        "doctrine/dbal": "*"
+        "doctrine/dbal": "*",
+        "symfony/event-dispatcher": "*"
     },
     "autoload": {
-        "psr-0": { "Dja": "src/" }
+        "psr-0": { "Dja": "src/" },
+        "files": ["src/Dja/Util/Functions.php"]
     }
 }

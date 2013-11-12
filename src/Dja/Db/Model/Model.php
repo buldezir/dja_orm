@@ -147,7 +147,12 @@ abstract class Model implements \ArrayAccess
                 $relData[$relKey][$relCol] = $value;
             } else {
                 // local:
-                $this->$key = $value;
+                $setter = 'set' . $this->transformVarName($key);
+                if (method_exists($this, $setter)) {
+                    $this->$setter($value);
+                } else {
+                    $this->_set($key, $value);
+                }
             }
         }
         foreach ($relData as $rel => $data) {
@@ -170,14 +175,14 @@ abstract class Model implements \ArrayAccess
      * @param bool $isNewRecord
      * @return \Dja\Db\Model\Model
      */
-    final public function __construct(array $data = array(), $isNewRecord = true)
+    public function __construct(array $data = array(), $isNewRecord = true)
     {
         $this->isNewRecord = $isNewRecord;
         static::metadata();
-        if (!$isNewRecord) {
-            $this->hydrate($data);
-        } else {
+        if ($isNewRecord) {
             $this->setFromArray($data);
+        } else {
+            $this->hydrate($data);
         }
         $this->init();
         $this->inited = true;
@@ -244,9 +249,9 @@ abstract class Model implements \ArrayAccess
     }
 
     /**
-     *
+     * @return array
      */
-    protected function validate()
+    public function validate()
     {
         foreach ($this->data as $key => $value) {
             $field = static::metadata()->getField($key);
@@ -262,6 +267,7 @@ abstract class Model implements \ArrayAccess
                 }
             }
         }
+        return $this->validationErrors;
     }
 
     /**
@@ -334,6 +340,7 @@ abstract class Model implements \ArrayAccess
         } elseif ($metadata->isVirtual($name)) {
             if ($field->isRelation()) {
                 if (!isset($this->relationDataCache[$name])) {
+                    /** @var Field\ForeignKey $field */
                     $this->relationDataCache[$name] = $field->getRelation($this);
                 }
                 return $this->relationDataCache[$name];
@@ -346,19 +353,21 @@ abstract class Model implements \ArrayAccess
     /**
      * @param $name
      * @param $value
+     * @param bool $raw
      * @throws \InvalidArgumentException
      * @throws \Exception
      */
-    protected function _set($name, $value)
+    protected function _set($name, $value, $raw = false)
     {
         $metadata = static::metadata();
         $field = $metadata->getField($name);
         if ($this->inited === true && $field->editable === false) {
             throw new \Exception("Field '{$name}' is read-only");
         }
-        $value = $field->cleanValue($value);
-        if ($value === null && !$field->is_null) {
-            throw new \InvalidArgumentException("Field '{$name}' is not nullable");
+        if ($raw) {
+            $value = $field->fromDbValue($value);
+        } else {
+            $value = $field->cleanValue($value);
         }
         if ($metadata->isLocal($name)) {
             $this->data[$name] = $value;
@@ -391,7 +400,6 @@ abstract class Model implements \ArrayAccess
     /**
      * @param string $name
      * @param mixed $value
-     * @throws \Exception
      * @return void
      */
     public function __set($name, $value)

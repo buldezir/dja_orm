@@ -7,6 +7,14 @@ use Symfony\Component\EventDispatcher\GenericEvent as Event;
 
 class Metadata
 {
+    const EVENT_AFTER_INIT = 'event.afterFieldsInit';
+    const EVENT_AFTER_ADD = 'event.afterFieldAdd';
+
+    /**
+     * @var \Doctrine\DBAL\Connection
+     */
+    protected static $defaultDbConn;
+
     /**
      * @var array
      */
@@ -197,6 +205,7 @@ class Metadata
                 }
             }
         }
+        $this->events()->dispatch(self::EVENT_AFTER_ADD, new Event($fieldObj, $options));
     }
 
     /**
@@ -207,6 +216,8 @@ class Metadata
         foreach ($this->fields as $name => $options) {
             $this->_addField($name, $options);
         }
+        $this->events()->dispatch(self::EVENT_AFTER_INIT, new Event($this, $this->fields));
+        unset($this->fields);
     }
 
     /**
@@ -364,5 +375,39 @@ class Metadata
     public function getModelClass()
     {
         return $this->modelClassName;
+    }
+
+    /**
+     * @return \Doctrine\DBAL\Connection
+     */
+    public function getDbConnection()
+    {
+        return self::getDefaultDbConnection();
+    }
+
+    /**
+     * @return \Doctrine\DBAL\Connection
+     */
+    public static function getDefaultDbConnection()
+    {
+        if (null === self::$defaultDbConn) {
+            self::$defaultDbConn = \Doctrine\DBAL\DriverManager::getConnection(array(
+                'driver' => 'pdo_pgsql',
+                'dbname' => 'sasha',
+                'user' => 'sasha',
+                'password' => '',
+                'host' => 'localhost',
+                //'port' => 6432,
+            ));
+        }
+        return self::$defaultDbConn;
+    }
+
+    /**
+     * @param \Doctrine\DBAL\Connection $conn
+     */
+    public static function setDefaultDbConnection(\Doctrine\DBAL\Connection $conn)
+    {
+        self::$defaultDbConn = $conn;
     }
 }

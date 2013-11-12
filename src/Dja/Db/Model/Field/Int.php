@@ -20,11 +20,18 @@ class Int extends Base
         parent::__construct($options);
     }
 
-    public function isValid($value)
+    public function toPhp($value)
     {
-        if (strval(intval($value)) === strval($value)) { // may be this is wtf
-            return true;
-        }
-        return false;
+        return intval($value);
     }
+
+    public function validate($value)
+    {
+        parent::validate($value);
+        if (!is_int($value)) {
+            throw new \InvalidArgumentException("Field '{$this->name}' must be integer");
+        }
+    }
+
+
 }

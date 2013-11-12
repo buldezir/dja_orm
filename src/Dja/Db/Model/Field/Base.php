@@ -39,6 +39,7 @@ class Base
         'db_column'    => null,
         'db_index'     => false,
         'max_length'   => null,
+        'is_blank'     => true,
         'is_null'      => false,
         'is_unique'    => false,
         'choices'      => null,
@@ -55,6 +56,8 @@ class Base
      * @var Metadata
      */
     protected $metadata;
+
+    protected $validators = array();
 
     /**
      * @param array $options
@@ -98,16 +101,43 @@ class Base
     }
 
     /**
+     * user input or untrusted source
      * php representation of value
+     * +
+     * validation
      * @param $value
      * @return mixed
      */
     public function cleanValue($value)
     {
+        $value = $this->toPhp($value);
+        $this->validate($value);
         return $value;
     }
 
     /**
+     * user input or untrusted source
+     * php representation of value
+     * @param $value
+     * @return mixed
+     */
+    public function toPhp($value)
+    {
+        return $value;
+    }
+
+    /**
+     * db -> php
+     * @param $value
+     * @return mixed
+     */
+    public function fromDbValue($value)
+    {
+        return $value;
+    }
+
+    /**
+     * php -> db
      * value stored in db
      * @param $value
      * @return mixed
@@ -115,6 +145,50 @@ class Base
     public function dbPrepValue($value)
     {
         return $value;
+    }
+
+    /**
+     * @param $value
+     * @throws \Exception
+     */
+    public function validate($value)
+    {
+        if (!$this->editable) {
+            return;
+        }
+        if (!$this->is_null && $value === null) {
+            throw new \InvalidArgumentException("Field '{$this->name}' is not nullable");
+        }
+        if (!$this->is_blank && empty($value)) {
+            throw new \InvalidArgumentException("Field '{$this->name}' cannot be empty");
+        }
+        foreach ($this->validators as &$validator) {
+            $validator();
+        }
+    }
+
+    /**
+     * @param $value
+     * @return bool
+     */
+    public function isValid($value)
+    {
+        try {
+            $this->validate($value);
+            return true;
+        } catch (\Exception $e) {
+            return false;
+        }
+    }
+
+    /**
+     * @param callable $v
+     * @return $this
+     */
+    public function addValidator(\Closure $v)
+    {
+        $this->validators[] = $v;
+        return $this;
     }
 
     /**
@@ -133,27 +207,6 @@ class Base
     public function isRelation()
     {
         return false;
-    }
-
-    /**
-     * validate input data for this field type
-     * @param $value
-     * @return bool
-     */
-    public function isValid($value)
-    {
-        return true;
-    }
-
-    /**
-     * @param $value
-     * @throws \Exception
-     */
-    public function validate($value)
-    {
-        if (!$this->isValid($value)) {
-            throw new \Exception('Value is not valid');
-        }
     }
 
     /**

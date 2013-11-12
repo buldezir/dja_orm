@@ -91,9 +91,14 @@ class Query implements \Countable, \Iterator
     protected $metadata;
 
     /**
-     * @var Pdo
+     * @var \Doctrine\DBAL\Connection
      */
     protected $db;
+
+    /**
+     * @var \Doctrine\DBAL\Query\QueryBuilder
+     */
+    protected $qb;
 
     /**
      * @var string
@@ -127,12 +132,14 @@ class Query implements \Countable, \Iterator
     {
         $this->metadata = $metadata;
         $this->table = $metadata->getDbTableName();
-        $this->db = Pdo::getDefault();
+        $this->db = $metadata->getDbConnection();
+        $this->qb = $this->db->createQueryBuilder();
+        $this->qb->from($this->table, 't');
     }
 
     public function __toString()
     {
-        return $this->buildQuery();
+        return $this->buildQuery() . ' || ' . $this->qb->getSQL();
     }
 
     /**
@@ -173,11 +180,11 @@ class Query implements \Countable, \Iterator
         $keys = array();
         $values = array();
         foreach ($data as $key => $value) {
-            $keys[] = $this->db->quoteId($key);
+            $keys[] = $this->db->quoteIdentifier($key);
             $values[] = $this->db->quote($this->metadata->getField($key)->dbPrepValue($value));
         }
 
-        $sql = "INSERT INTO " . $this->db->quoteId($this->table) . " (" . implode(', ', $keys) . ") VALUES (" . implode(', ', $values) . ")";
+        $sql = "INSERT INTO " . $this->db->quoteIdentifier($this->table) . " (" . implode(', ', $keys) . ") VALUES (" . implode(', ', $values) . ")";
 //        dump($sql);
         $this->db->exec($sql);
         return $this->db->lastInsertId();
@@ -196,10 +203,10 @@ class Query implements \Countable, \Iterator
         $set = array();
         foreach ($data as $key => $value) {
             $value = $this->metadata->getField($key)->dbPrepValue($value);
-            $set[] = $this->db->placeHold($this->db->quoteId($key) . ' = ?', $value);
+            $set[] = $this->db->placeHold($this->db->quoteIdentifier($key) . ' = ?', $value);
         }
         $sql = 'UPDATE ';
-        $sql .= $this->db->quoteId($this->table) . ' ' . $this->db->quoteId('t');
+        $sql .= $this->db->quoteIdentifier($this->table) . ' ' . $this->db->quoteIdentifier('t');
         $sql .= ' ';
         $sql .= 'SET ' . implode(', ', $set);
         $sql .= ' ';
@@ -218,7 +225,7 @@ class Query implements \Countable, \Iterator
             throw new \Exception('must be WHERE conditions for delete');
         }
         $sql = 'DELETE FROM ';
-        $sql .= $this->db->quoteId($this->table) . ' ' . $this->db->quoteId('t');
+        $sql .= $this->db->quoteIdentifier($this->table) . ' ' . $this->db->quoteIdentifier('t');
         $sql .= ' ';
         $sql .= $this->buildWhere();
         return $this->db->exec($sql);
@@ -334,6 +341,7 @@ class Query implements \Countable, \Iterator
         $limit = (int)$limit;
         $this->offset = $offset;
         $this->limit = $limit;
+        $this->qb->setFirstResult($offset)->setMaxResults($limit);
         return $this;
     }
 
@@ -373,7 +381,7 @@ class Query implements \Countable, \Iterator
             }
 
             $value = $field->dbPrepValue($value);
-            list($db_column, $lookupQ, $value) = $this->db->getSchema()->getLookup($lookupType, $this->db->quoteId($prefix . $db_column), $value, $negate);
+            list($db_column, $lookupQ, $value) = $this->db->getSchema()->getLookup($lookupType, $this->db->quoteIdentifier($prefix . $db_column), $value, $negate);
             if (is_array($value)) {
                 $value = implode(', ', $value);
             } elseif ($value instanceof Expr || $value instanceof Query) {
@@ -412,6 +420,7 @@ class Query implements \Countable, \Iterator
             $arguments = $this->explaneArguments($arguments, true);
             foreach ($arguments as $cond) {
                 $this->where[] = $cond;
+                $this->qb->andWhere($cond);
             }
         } else {
             throw new \InvalidArgumentException("Invalid argument, array");
@@ -431,6 +440,7 @@ class Query implements \Countable, \Iterator
             $arguments = $this->explaneArguments($arguments);
             foreach ($arguments as $cond) {
                 $this->where[] = $cond;
+                $this->qb->andWhere($cond);
             }
         } else {
             throw new \InvalidArgumentException("Invalid argument, array");
@@ -447,9 +457,11 @@ class Query implements \Countable, \Iterator
         $args = func_get_args();
         foreach ($args as $order) {
             if ($order{0} === '-') {
-                $order = $this->db->quoteId(substr($order, 1)) . ' ' . self::ORDER_DESCENDING;
+                $order = $this->db->quoteIdentifier(substr($order, 1)) . ' ' . self::ORDER_DESCENDING;
+                $this->qb->addOrderBy($this->db->quoteIdentifier(substr($order, 1)), self::ORDER_DESCENDING);
             } else {
-                $order = $this->db->quoteId($order) . ' ' . self::ORDER_ASCENDING;
+                $order = $this->db->quoteIdentifier($order) . ' ' . self::ORDER_ASCENDING;
+                $this->qb->addOrderBy($this->db->quoteIdentifier($order), self::ORDER_ASCENDING);
             }
             $this->order[] = $order;
         }
@@ -466,7 +478,7 @@ class Query implements \Countable, \Iterator
         $sql = 'SELECT ';
         $sql .= $this->buildColumns();
         $sql .= ' FROM ';
-        $sql .= $this->db->quoteId($this->table) . ' ' . $this->db->quoteId('t');
+        $sql .= $this->db->quoteIdentifier($this->table) . ' ' . $this->db->quoteIdentifier('t');
         $sql .= $joins;
         $sql .= ' ';
         $sql .= $this->buildWhere();
@@ -541,10 +553,11 @@ class Query implements \Countable, \Iterator
                 }
                 /** @var ForeignKey $field */
                 $relClass = $field->relationClass;
-                $tbl = $this->db->quoteId($relClass::metadata()->getDbTableName()) . ' ' . $this->db->quoteId('j' . $i);
-                //$on = sprintf('%s = %s', $this->db->quoteId('t.' . $field->db_column), $this->db->quoteId('j' . $i . '.' . $field->to_field));
-                $on = sprintf('%s = %s', $this->db->quoteId('t.' . $field->db_column), $this->db->quoteId('j' . $i . '.' . $field->to_field));
+                $tbl = $this->db->quoteIdentifier($relClass::metadata()->getDbTableName()) . ' ' . $this->db->quoteIdentifier('j' . $i);
+                //$on = sprintf('%s = %s', $this->db->quoteIdentifier('t.' . $field->db_column), $this->db->quoteIdentifier('j' . $i . '.' . $field->to_field));
+                $on = sprintf('%s = %s', $this->db->quoteIdentifier('t.' . $field->db_column), $this->db->quoteIdentifier('j' . $i . '.' . $field->to_field));
                 $join .= ' LEFT JOIN ' . $tbl . ' ON ' . $on;
+                $this->qb->leftJoin('t', $relClass::metadata()->getDbTableName(), 'j' . $i, $on);
                 foreach ($relClass::metadata()->getDbColNames() as $rCol) {
                     $this->columns[$field->name . '__' . $rCol] = 'j' . $i . '.' . $rCol;
                 }
@@ -573,11 +586,12 @@ class Query implements \Countable, \Iterator
                 $parts[] = strval($colName);
             } else {
                 if (is_int($alias)) {
-                    $parts[] = $this->db->quoteId($colName);
+                    $parts[] = $this->db->quoteIdentifier($colName);
                 } else {
-                    $parts[] = $this->db->quoteId($colName) . ' as ' . $this->db->quoteId($alias);
+                    $parts[] = $this->db->quoteIdentifier($colName) . ' as ' . $this->db->quoteIdentifier($alias);
                 }
             }
+            $this->qb->addSelect(end($parts));
         }
         return implode(', ', $parts);
     }
@@ -666,7 +680,7 @@ class Query implements \Countable, \Iterator
 
         $joins = $this->autoJoin ? $q->buildJoins() : '';
         $sql = 'SELECT COUNT(*) FROM ';
-        $sql .= $this->db->quoteId($this->table) . ' ' . $this->db->quoteId('t');
+        $sql .= $this->db->quoteIdentifier($this->table) . ' ' . $this->db->quoteIdentifier('t');
         $sql .= $joins;
         $sql .= ' ';
         $sql .= $q->buildWhere();

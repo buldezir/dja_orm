@@ -43,6 +43,4 @@ class Char extends Base
             throw new \Dja\Db\Model\ValidationError($msgs);
         }
     }
-
-
 }
