@@ -15,11 +15,6 @@ namespace Dja\Db\Model\Field;
  */
 class Bool extends Base
 {
-    public function __construct(array $options = array())
-    {
-        parent::__construct($options);
-    }
-
     /**
      * @param $value
      * @return bool

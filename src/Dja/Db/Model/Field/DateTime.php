@@ -18,6 +18,9 @@ namespace Dja\Db\Model\Field;
  */
 class DateTime extends Base
 {
+    protected $re = '#^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$#';
+    protected $format = 'Y-m-d H:i:s';
+
     public function __construct(array $options = array())
     {
         $this->_options['autoInsert'] = false;
@@ -34,35 +37,47 @@ class DateTime extends Base
 
     public function getDefault()
     {
-        return date('Y-m-d H:i:s');
+        return date($this->format);
     }
 
-    public function isValid($value)
+    public function toPhp($value)
     {
-        if (preg_match('#^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$#', $value)) {
-            return true;
+        if (is_string($value)) {
+            return $value;
+        } elseif ($value instanceof \DateTime) {
+            return $value->format($this->format);
         }
-        return false;
+        return strval($value);
+    }
+
+    public function validate($value)
+    {
+        parent::validate($value);
+        if (!preg_match($this->re, $value)) {
+            throw new \InvalidArgumentException("Field '{$this->name}' must be in valid date-time format");
+        }
     }
 
     protected function attachEvents()
     {
-        $class = $this->ownerClass;
-        $field = $this;
-        $this->metadata->events()->addListener($class::EVENT_BEFORE_SAVE, function(\Symfony\Component\EventDispatcher\GenericEvent $event)use($field){
-            /** @var \Dja\Db\Model\Model $model */
-            $model = $event->getSubject();
-            $fieldName = $field->db_column;
-            if ($field->autoInsert === true) {
-                if ($model->isNewRecord()) {
-                    $model->$fieldName = $field->getDefault();
+        if ($this->autoInsert || $this->autoUpdate) {
+            $class = $this->ownerClass;
+            $field = $this;
+            $this->metadata->events()->addListener($class::EVENT_BEFORE_SAVE, function (\Symfony\Component\EventDispatcher\GenericEvent $event) use ($field) {
+                /** @var \Dja\Db\Model\Model $model */
+                $model = $event->getSubject();
+                $fieldName = $field->db_column;
+                if ($field->autoInsert === true) {
+                    if ($model->isNewRecord()) {
+                        $model->$fieldName = $field->getDefault();
+                    }
                 }
-            }
-            if ($field->autoUpdate === true) {
-                if (!$model->isNewRecord()) {
-                    $model->$fieldName = $field->getDefault();
+                if ($field->autoUpdate === true) {
+                    if (!$model->isNewRecord()) {
+                        $model->$fieldName = $field->getDefault();
+                    }
                 }
-            }
-        });
+            });
+        }
     }
 }

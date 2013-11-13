@@ -9,4 +9,9 @@ class ModelTest extends PHPUnit_Framework_TestCase
         $v = $m->validate();
         $this->assertCount(0, $v, validationErrorsToString($v));
     }
+
+    public function testImport()
+    {
+        //var_dump(collectModels());
+    }
 }

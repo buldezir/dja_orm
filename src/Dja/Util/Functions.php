@@ -68,7 +68,7 @@ function import($path)
     if (file_exists($fpath)) {
         return require($fpath);
     } else {
-        throw new \Exception('fail to load file "'.$fpath.'" for '.$path.'');
+        throw new \Exception('fail to load file "' . $fpath . '" for ' . $path . '');
     }
 }
 
@@ -96,7 +96,7 @@ function pr()
             $s[] = '<p>' . ob_get_clean() . '</p>';
         }
     }
-    echo implode('', $s);
+    echo implode(PHP_EOL, $s) . PHP_EOL;
 }
 
 /**
@@ -132,7 +132,6 @@ function Expr($value)
 }
 
 /**
- * todo: add model inheritance support
  * @return array
  */
 function collectModels()
@@ -141,8 +140,7 @@ function collectModels()
     $allClasses = get_declared_classes();
     foreach ($allClasses as $className) {
         $refl = new \ReflectionClass($className);
-        $parent = $refl->getParentClass();
-        if ($parent && $parent->getShortName() == 'Model') {
+        if ($refl->isSubclassOf('\\Dja\\Db\\Model\\Model') && !$refl->hasProperty('isProxy')) {
             $result[] = $className;
         }
     }
@@ -198,13 +196,13 @@ function formatBytes($n, $sep = '')
     $mbDiv = pow(1024, 2);
     $kbDiv = 1024;
     if ($n > $gbDiv) {
-        return round($n/$gbDiv, 3).$sep.'Gb';
+        return round($n / $gbDiv, 3) . $sep . 'Gb';
     }
     if ($n > $mbDiv) {
-        return round($n/$mbDiv, 3).$sep.'Mb';
+        return round($n / $mbDiv, 3) . $sep . 'Mb';
     }
     if ($n > $kbDiv) {
-        return round($n/$kbDiv, 3).$sep.'Kb';
+        return round($n / $kbDiv, 3) . $sep . 'Kb';
     }
-    return $n.$sep.'B';
+    return $n . $sep . 'B';
 }

@@ -91,6 +91,12 @@ class Query implements \Countable, \Iterator
     protected $metadata;
 
     /**
+     * cache
+     * @var string
+     */
+    protected $modelClassName;
+
+    /**
      * @var \Doctrine\DBAL\Connection
      */
     protected $db;
@@ -131,6 +137,7 @@ class Query implements \Countable, \Iterator
     public function __construct(Metadata $metadata)
     {
         $this->metadata = $metadata;
+        $this->modelClassName = $metadata->getModelClass();
         $this->table = $metadata->getDbTableName();
         $this->db = $metadata->getDbConnection();
         $this->qb = $this->db->createQueryBuilder();
@@ -697,11 +704,11 @@ class Query implements \Countable, \Iterator
     public function current()
     {
         if ($this->forceNoCache) {
-            $cls = $this->metadata->getModelClass();
-            return new $cls(false, $this->exec()->fetch());
+            $cls = $this->modelClassName;
+            return new $cls($this->exec()->fetch(), false, true);
         } else {
             if (!isset($this->rowCache[$this->pointer])) {
-                $cls = $this->metadata->getModelClass();
+                $cls = $this->modelClassName;
                 $this->rowCache[$this->pointer] = new $cls($this->exec()->fetch(), false);
             }
             return $this->rowCache[$this->pointer];

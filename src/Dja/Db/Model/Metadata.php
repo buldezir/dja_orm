@@ -274,7 +274,7 @@ class Metadata
      */
     public function getField($key)
     {
-        if (array_key_exists($key, $this->_allFields)) {
+        if (isset($this->_allFields[$key])) {
             return $this->_allFields[$key];
         } else {
             throw new \OutOfRangeException("field with name or db_column '{$key}' does not exist!");
@@ -320,7 +320,7 @@ class Metadata
      */
     public function isLocal($key)
     {
-        return array_key_exists($key, $this->_localFields);
+        return isset($this->_localFields[$key]);
     }
 
     /**
@@ -329,7 +329,7 @@ class Metadata
      */
     public function isVirtual($key)
     {
-        return array_key_exists($key, $this->_virtualFields);
+        return isset($this->_virtualFields[$key]);
     }
 
     /**
@@ -338,7 +338,7 @@ class Metadata
      */
     public function isM2M($key)
     {
-        return array_key_exists($key, $this->_many2manyFields);
+        return isset($this->_many2manyFields[$key]);
     }
 
     /**

@@ -49,7 +49,7 @@ class Base
         'help_text'    => '',
         'verbose_name' => null,
         'using'        => null,
-        'auto_increment'=> false
+        'auto_increment'=> false,
     );
 
     /**

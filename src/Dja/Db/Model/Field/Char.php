@@ -21,26 +21,19 @@ class Char extends Base
         parent::__construct($options);
     }
 
-    public function isValid($value)
+    public function toPhp($value)
     {
-        if (is_string($value) && strlen($value) > $this->getOption('max_length')) { // todo: may be mb_strlen ?
-            return true;
-        }
-        return false;
+        return strval($value);
     }
 
     public function validate($value)
     {
-        $msgs = array();
+        parent::validate($value);
         if (!is_string($value)) {
-            $msgs[] = 'Value is not string';
-        } else {
-            if (strlen($value) > $this->getOption('max_length')) {
-                $msgs[] = 'Value length is > '.$this->getOption('max_length');
-            }
+            throw new \InvalidArgumentException("Field '{$this->name}' must be string");
         }
-        if (count($msgs) > 0) {
-            throw new \Dja\Db\Model\ValidationError($msgs);
+        if (strlen($value) > $this->getOption('max_length')) {
+            throw new \InvalidArgumentException("Field '{$this->name}' value length > $this->max_length");
         }
     }
 }

@@ -11,7 +11,5 @@ class QueryTest extends PHPUnit_Framework_TestCase {
     {
         $q = UserModel::objects()->limit(5);
         $this->assertEquals(5, $q->count());
-
-
     }
 }

@@ -1,8 +1,8 @@
 <?php
 /**
  * User: Alexander.Arutyunov
- * Date: 12.07.13
- * Time: 13:11
+ * Date: 13.11.13
+ * Time: 11:35
  */
 
 namespace Dja\Db\Model\Field;
@@ -12,7 +12,7 @@ namespace Dja\Db\Model\Field;
  * @package Dja\Db\Model\Field
  *
  */
-class Int extends Base
+class Float extends Base
 {
     public function __construct(array $options = array())
     {
@@ -22,14 +22,17 @@ class Int extends Base
 
     public function toPhp($value)
     {
-        return intval($value);
+        if (is_string($value)) {
+            $value = str_replace(',', '.', $value);
+        }
+        return floatval($value);
     }
 
     public function validate($value)
     {
         parent::validate($value);
-        if (!is_int($value)) {
-            throw new \InvalidArgumentException("Field '{$this->name}' must be integer");
+        if (!is_float($value)) {
+            throw new \InvalidArgumentException("Field '{$this->name}' must be float");
         }
     }
 }

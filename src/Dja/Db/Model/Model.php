@@ -66,6 +66,9 @@ abstract class Model implements \ArrayAccess
      */
     protected $validationErrors = array();
 
+    /** @var Metadata */
+    protected $metadata;
+
     /**
      * current model metadata
      * @return Metadata
@@ -111,30 +114,50 @@ abstract class Model implements \ArrayAccess
      * @throws \Exception
      * @return mixed
      */
-    public static function __callStatic($name, $arguments)
+//    public static function __callStatic($name, $arguments)
+//    {
+//        $cc = get_called_class();
+//        $short_cc = substr($cc, strrpos($cc, '\\') + 1);
+//        $helperClass = '\\App\\Helpers\\' . $short_cc . 'Helper';
+//        try {
+//            class_exists($helperClass);
+//        } catch (\Exception $e) {
+//            throw new \Exception('helper "' . $helperClass . '" does not exist', 0, $e);
+//        }
+//        $inst = $helperClass::getInstance();
+//        if (!method_exists($inst, $name)) {
+//            throw new \Exception('helper method "' . $helperClass . '->' . $name . '()" does not exist');
+//        }
+//        return call_user_func_array(array($inst, $name), $arguments);
+//    }
+
+    /**
+     * @param array $data
+     * @param bool $isNewRecord
+     * @param bool $fastRawSet tweak for fast data setup
+     * @return \Dja\Db\Model\Model
+     */
+    public function __construct(array $data = array(), $isNewRecord = true, $fastRawSet = false)
     {
-        $cc = get_called_class();
-        $short_cc = substr($cc, strrpos($cc, '\\')+1);
-        $helperClass = '\\App\\Helpers\\'.$short_cc.'Helper';
-        try {
-            class_exists($helperClass);
-        } catch (\Exception $e) {
-            throw new \Exception('helper "'.$helperClass.'" does not exist', 0, $e);
+        $this->isNewRecord = $isNewRecord;
+        $this->metadata = static::metadata();
+        if ($isNewRecord) {
+            $this->setFromArray($data);
+        } else {
+            $this->hydrate($data, $fastRawSet);
         }
-        $inst = $helperClass::getInstance();
-        if (!method_exists($inst, $name)) {
-            throw new \Exception('helper method "'.$helperClass.'->'.$name.'()" does not exist');
-        }
-        return call_user_func_array(array($inst, $name), $arguments);
+        $this->init();
+        $this->inited = true;
     }
 
     /**
      * receive array of raw data and combine it to local values and related objects
      * basicaly for Model::objects()->selectRelated() auto joins
      * @param array $rawData
+     * @param bool $fastRawSet tweak for fast data setup w/o filtering and validating
      * @return $this
      */
-    public function hydrate(array $rawData = array())
+    public function hydrate(array $rawData = array(), $fastRawSet = false)
     {
         if ($this->hydrated) {
             return $this;
@@ -146,53 +169,33 @@ abstract class Model implements \ArrayAccess
                 list($relKey, $relCol) = explode('__', $key);
                 $relData[$relKey][$relCol] = $value;
             } else {
+                // todo: think about workaround, because method_exists give biiig cpu overhead
                 // local:
-                $setter = 'set' . $this->transformVarName($key);
-                if (method_exists($this, $setter)) {
-                    $this->$setter($value);
+//                $setter = 'set' . $this->transformVarName($key);
+//                if (method_exists($this, $setter)) {
+//                    $this->$setter($value);
+//                } else {
+//                    $this->_set($key, $value, true);
+//                }
+                if ($fastRawSet) {
+                    $this->data[$key] = $value;
                 } else {
-                    $this->_set($key, $value);
+                    $this->_set($key, $value, true);
                 }
             }
         }
         foreach ($relData as $rel => $data) {
-            $field = static::metadata()->getField($rel);
+            $field = $this->metadata->getField($rel);
             if ($field->isRelation()) {
                 if ($this->_get($field->db_column)) {
                     $relClass = $field->relationClass;
-                    $this->relationDataCache[$rel] = new $relClass(false, $data);
+                    $this->relationDataCache[$rel] = new $relClass($data, false, true);
                 }
             }
         }
-
         $this->cleanData = $this->data;
         $this->hydrated = true;
         return $this;
-    }
-
-    /**
-     * @param array $data
-     * @param bool $isNewRecord
-     * @return \Dja\Db\Model\Model
-     */
-    public function __construct(array $data = array(), $isNewRecord = true)
-    {
-        $this->isNewRecord = $isNewRecord;
-        static::metadata();
-        if ($isNewRecord) {
-            $this->setFromArray($data);
-        } else {
-            $this->hydrate($data);
-        }
-        $this->init();
-        $this->inited = true;
-    }
-
-    /**
-     *  for overriding
-     */
-    protected function init()
-    {
     }
 
     /**
@@ -207,7 +210,7 @@ abstract class Model implements \ArrayAccess
         if ($e->isPropagationStopped()) {
             return $e;
         }
-        static::metadata()->events()->dispatch($eventName, $e);
+        $this->metadata->events()->dispatch($eventName, $e);
         return $e;
     }
 
@@ -218,7 +221,7 @@ abstract class Model implements \ArrayAccess
      */
     protected function setDefaultValues($force = false)
     {
-        foreach (static::metadata()->getLocalFields() as $field) {
+        foreach ($this->metadata->getLocalFields() as $field) {
             if ($field->default !== null) {
                 if ($force === true || !isset($this->data[$field->db_column])) {
                     $this->data[$field->db_column] = $field->default;
@@ -254,7 +257,7 @@ abstract class Model implements \ArrayAccess
     public function validate()
     {
         foreach ($this->data as $key => $value) {
-            $field = static::metadata()->getField($key);
+            $field = $this->metadata->getField($key);
             try {
                 $field->validate($value);
             } catch (ValidationError $e) {
@@ -280,12 +283,12 @@ abstract class Model implements \ArrayAccess
                 // set default data if saving new record
                 $this->setDefaultValues();
                 $newPK = static::objects()->insert($this);
-                $this->data[static::metadata()->pk->db_column] = $newPK;
+                $this->data[$this->metadata->pk->db_column] = $newPK;
                 $this->cleanData = $this->data;
                 $this->isNewRecord = false;
             } else {
                 $updData = array_diff($this->data, $this->cleanData);
-                unset($updData[static::metadata()->pk->db_column]);
+                unset($updData[$this->metadata->pk->db_column]);
                 if ($updData) {
                     static::objects()->filter('pk', $this->pk)->update($updData);
                 }
@@ -333,11 +336,10 @@ abstract class Model implements \ArrayAccess
      */
     protected function _get($name)
     {
-        $metadata = self::metadata();
-        $field = $metadata->getField($name);
-        if ($metadata->isLocal($name)) {
+        $field = $this->metadata->getField($name);
+        if ($this->metadata->isLocal($name)) {
             return $this->data[$name];
-        } elseif ($metadata->isVirtual($name)) {
+        } elseif ($this->metadata->isVirtual($name)) {
             if ($field->isRelation()) {
                 if (!isset($this->relationDataCache[$name])) {
                     /** @var Field\ForeignKey $field */
@@ -359,8 +361,7 @@ abstract class Model implements \ArrayAccess
      */
     protected function _set($name, $value, $raw = false)
     {
-        $metadata = static::metadata();
-        $field = $metadata->getField($name);
+        $field = $this->metadata->getField($name);
         if ($this->inited === true && $field->editable === false) {
             throw new \Exception("Field '{$name}' is read-only");
         }
@@ -369,9 +370,9 @@ abstract class Model implements \ArrayAccess
         } else {
             $value = $field->cleanValue($value);
         }
-        if ($metadata->isLocal($name)) {
+        if ($this->metadata->isLocal($name)) {
             $this->data[$name] = $value;
-        } elseif ($metadata->isVirtual($name)) {
+        } elseif ($this->metadata->isVirtual($name)) {
             if ($field->isRelation()) {
                 $this->relationDataCache[$name] = $value;
                 $this->data[$field->db_column] = $value->__get($field->to_field);
@@ -419,7 +420,7 @@ abstract class Model implements \ArrayAccess
      */
     public function __isset($name)
     {
-        return isset(static::metadata()->$name);
+        return isset($this->metadata->$name);
     }
 
     /**
@@ -448,7 +449,7 @@ abstract class Model implements \ArrayAccess
     public function export()
     {
         $result = array();
-        foreach (static::metadata()->getLocalFields() as $field) {
+        foreach ($this->metadata->getLocalFields() as $field) {
             if ($field->isRelation()) {
                 $value = $field->viewValue($this->__get($field->name));
             } else {
@@ -471,9 +472,8 @@ abstract class Model implements \ArrayAccess
      */
     public function setFromArray(array $data)
     {
-        $metadata = static::metadata();
         foreach ($data as $k => $v) {
-            if (isset($metadata->$k)) {
+            if (isset($this->metadata->$k)) {
                 $this->$k = $v;
             }
         }
@@ -534,5 +534,12 @@ abstract class Model implements \ArrayAccess
     protected function transformVarName($name)
     {
         return implode('', array_map('ucfirst', explode('_', $name)));
+    }
+
+    /**
+     *  for overriding
+     */
+    protected function init()
+    {
     }
 }
