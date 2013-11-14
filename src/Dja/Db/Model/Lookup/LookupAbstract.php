@@ -4,9 +4,9 @@
  * Date: 11.07.13
  * Time: 14:09
  */
-namespace Dja\Db;
+namespace Dja\Db\Model\Lookup;
 
-abstract class Schema
+abstract class LookupAbstract
 {
     const TYPE_INT = 'int';
     const TYPE_STRING = 'str';
@@ -14,25 +14,20 @@ abstract class Schema
     const TYPE_NULL = 'null';
 
     /**
-     * @var Pdo
+     * @var \Doctrine\DBAL\Connection
      */
     protected $db;
 
     protected $operators = array();
 
     /**
-     * @param \PDO|string $conn
-     * @return Schema
+     * @param \Doctrine\DBAL\Connection $conn
+     * @return LookupAbstract
      */
     public static function factory($conn)
     {
-        if ($conn instanceof \PDO) {
-            $className = '\\Dja\\Db\\SchemaAdapter\\'.ucfirst($conn->getAttribute(\PDO::ATTR_DRIVER_NAME));
-            return new $className($conn);
-        } else {
-            $className = 'SchemaAdapter\\'.ucfirst($conn);
-            return new $className;
-        }
+        $className = '\\Dja\\Db\\Model\\Lookup\\'.ucfirst($conn->getDatabasePlatform()->getName());
+        return new $className($conn);
     }
 
     /**
@@ -107,37 +102,10 @@ abstract class Schema
         return array($escapedField, $lookup, $rawValue);
     }
 
-    public function __construct($conn = null)
+    public function __construct($conn)
     {
-        if ($conn) {
-            $this->db = $conn;
-        } else {
-            $this->db = Pdo::getDefault();
-        }
+        $this->db = $conn;
     }
-
-    /**
-     * @return array
-     */
-    abstract public function getTables();
-
-    /**
-     * @param string $table
-     * @return array
-     */
-    abstract public function getColumns($table);
-
-    /**
-     * @param $value
-     * @return mixed
-     */
-    abstract public function escapeSchema($value);
-
-    /**
-     * @param $value
-     * @return mixed
-     */
-    abstract public function escapeValue($value);
 
     /**
      * @param int $value

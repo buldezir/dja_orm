@@ -8,8 +8,7 @@
 namespace Dja\Db\Model;
 
 use Dja\Db\Model\Field\ForeignKey;
-use Dja\Db\Pdo;
-use Dja\Db\PdoStatement;
+use Dja\Db\Model\Lookup\LookupAbstract;
 
 /**
  * todo: cleanup, may be extract query builder to other class
@@ -19,26 +18,10 @@ use Dja\Db\PdoStatement;
  */
 class Query implements \Countable, \Iterator
 {
-    const SELECT = 'select';
-    const QUANTIFIER = 'quantifier';
-    const COLUMNS = 'columns';
-    const TABLE = 'table';
-    const JOINS = 'joins';
-    const WHERE = 'where';
-    const GROUP = 'group';
-    const HAVING = 'having';
-    const ORDER = 'order';
-    const LIMIT = 'limit';
-    const OFFSET = 'offset';
-    const QUANTIFIER_DISTINCT = 'DISTINCT';
-    const QUANTIFIER_ALL = 'ALL';
-    const JOIN_INNER = 'inner';
-    const JOIN_OUTER = 'outer';
-    const JOIN_LEFT = 'left';
-    const JOIN_RIGHT = 'right';
-    const SQL_STAR = '*';
     const ORDER_ASCENDING = 'ASC';
     const ORDER_DESCENDING = 'DESC';
+
+    protected static $lookUp;
 
     /**
      * @var string
@@ -49,41 +32,6 @@ class Query implements \Countable, \Iterator
      * @var array
      */
     protected $columns = array();
-
-    /**
-     * @var array
-     */
-    protected $joins = array();
-
-    /**
-     * @var array
-     */
-    protected $where = array();
-
-    /**
-     * @var array
-     */
-    protected $order = array();
-
-    /**
-     * @var null|array
-     */
-    protected $group = null;
-
-    /**
-     * @var null|string|array
-     */
-    protected $having = null;
-
-    /**
-     * @var int|null
-     */
-    protected $limit = null;
-
-    /**
-     * @var int|null
-     */
-    protected $offset = null;
 
     /**
      * @var Metadata
@@ -112,9 +60,9 @@ class Query implements \Countable, \Iterator
     protected $queryStringCache;
 
     /**
-     * @var PdoStatement
+     * @var \Doctrine\DBAL\Statement
      */
-    protected $pdostatement = null;
+    protected $statement = null;
 
     protected $pointer = 0;
 
@@ -140,13 +88,12 @@ class Query implements \Countable, \Iterator
         $this->modelClassName = $metadata->getModelClass();
         $this->table = $metadata->getDbTableName();
         $this->db = $metadata->getDbConnection();
-        $this->qb = $this->db->createQueryBuilder();
-        $this->qb->from($this->table, 't');
+        $this->resetAll();
     }
 
     public function __toString()
     {
-        return $this->buildQuery() . ' || ' . $this->qb->getSQL();
+        return $this->buildQuery();
     }
 
     /**
@@ -184,16 +131,11 @@ class Query implements \Countable, \Iterator
         } else {
             throw new \InvalidArgumentException('$data must be array or Model inst');
         }
-        $keys = array();
-        $values = array();
+        $dataReady = [];
         foreach ($data as $key => $value) {
-            $keys[] = $this->db->quoteIdentifier($key);
-            $values[] = $this->db->quote($this->metadata->getField($key)->dbPrepValue($value));
+            $dataReady[$this->qi($key)] = $this->db->quote($this->metadata->getField($key)->dbPrepValue($value));
         }
-
-        $sql = "INSERT INTO " . $this->db->quoteIdentifier($this->table) . " (" . implode(', ', $keys) . ") VALUES (" . implode(', ', $values) . ")";
-//        dump($sql);
-        $this->db->exec($sql);
+        $this->db->insert($this->qi($this->table), $dataReady);
         return $this->db->lastInsertId();
     }
 
@@ -204,22 +146,14 @@ class Query implements \Countable, \Iterator
      */
     public function update(array $data)
     {
-        if (count($this->where) === 0) {
-            throw new \Exception('must be WHERE conditions for update');
-        }
-        $set = array();
+//        if (count($this->where) === 0) {
+//            throw new \Exception('must be WHERE conditions for update');
+//        }
+        $this->qb->update($this->qi($this->table), $this->qi('t'));
         foreach ($data as $key => $value) {
-            $value = $this->metadata->getField($key)->dbPrepValue($value);
-            $set[] = $this->db->placeHold($this->db->quoteIdentifier($key) . ' = ?', $value);
+            $this->qb->set($this->qi($key), $this->db->quote($this->metadata->getField($key)->dbPrepValue($value)));
         }
-        $sql = 'UPDATE ';
-        $sql .= $this->db->quoteIdentifier($this->table) . ' ' . $this->db->quoteIdentifier('t');
-        $sql .= ' ';
-        $sql .= 'SET ' . implode(', ', $set);
-        $sql .= ' ';
-        $sql .= $this->buildWhere();
-//        dump($sql); return;
-        return $this->db->exec($sql);
+        return $this->qb->execute();
     }
 
     /**
@@ -232,7 +166,7 @@ class Query implements \Countable, \Iterator
             throw new \Exception('must be WHERE conditions for delete');
         }
         $sql = 'DELETE FROM ';
-        $sql .= $this->db->quoteIdentifier($this->table) . ' ' . $this->db->quoteIdentifier('t');
+        $sql .= $this->qi($this->table) . ' ' . $this->qi('t');
         $sql .= ' ';
         $sql .= $this->buildWhere();
         return $this->db->exec($sql);
@@ -344,10 +278,6 @@ class Query implements \Countable, \Iterator
      */
     public function limit($limit, $offset = null)
     {
-        $offset = $offset ? $offset : null;
-        $limit = (int)$limit;
-        $this->offset = $offset;
-        $this->limit = $limit;
         $this->qb->setFirstResult($offset)->setMaxResults($limit);
         return $this;
     }
@@ -370,7 +300,7 @@ class Query implements \Countable, \Iterator
             $lookupArr = explode('__', $lookup);
             $field = $this->metadata->getField($lookupArr[0]);
             $lookupType = end($lookupArr);
-            if ($this->db->getSchema()->issetLookup($lookupType)) {
+            if ($this->lookuper()->issetLookup($lookupType)) {
                 $lookupType = array_pop($lookupArr);
             } else {
                 $lookupType = 'exact';
@@ -388,7 +318,7 @@ class Query implements \Countable, \Iterator
             }
 
             $value = $field->dbPrepValue($value);
-            list($db_column, $lookupQ, $value) = $this->db->getSchema()->getLookup($lookupType, $this->db->quoteIdentifier($prefix . $db_column), $value, $negate);
+            list($db_column, $lookupQ, $value) = $this->lookuper()->getLookup($lookupType, $this->qi($prefix . $db_column), $value, $negate);
             if (is_array($value)) {
                 $value = implode(', ', $value);
             } elseif ($value instanceof Expr || $value instanceof Query) {
@@ -407,11 +337,16 @@ class Query implements \Countable, \Iterator
      */
     public function selectRelated()
     {
-        $this->autoJoin = true;
-        foreach (func_get_args() as $j) {
+        $args = array();
+        if (func_num_args() === 1 && is_array(func_get_arg(0))) {
+            $args = func_get_arg(0);
+        } else {
+            $args = func_get_args();
+        }
+        foreach ($args as $j) {
             $this->autoJoinFilter[] = $j;
         }
-        $this->buildJoins();
+        $this->autoJoin = true;
         return $this;
     }
 
@@ -426,7 +361,6 @@ class Query implements \Countable, \Iterator
         if (is_array($arguments)) {
             $arguments = $this->explaneArguments($arguments, true);
             foreach ($arguments as $cond) {
-                $this->where[] = $cond;
                 $this->qb->andWhere($cond);
             }
         } else {
@@ -446,7 +380,6 @@ class Query implements \Countable, \Iterator
         if (is_array($arguments)) {
             $arguments = $this->explaneArguments($arguments);
             foreach ($arguments as $cond) {
-                $this->where[] = $cond;
                 $this->qb->andWhere($cond);
             }
         } else {
@@ -464,13 +397,10 @@ class Query implements \Countable, \Iterator
         $args = func_get_args();
         foreach ($args as $order) {
             if ($order{0} === '-') {
-                $order = $this->db->quoteIdentifier(substr($order, 1)) . ' ' . self::ORDER_DESCENDING;
-                $this->qb->addOrderBy($this->db->quoteIdentifier(substr($order, 1)), self::ORDER_DESCENDING);
+                $this->qb->addOrderBy($this->qi(substr($order, 1)), self::ORDER_DESCENDING);
             } else {
-                $order = $this->db->quoteIdentifier($order) . ' ' . self::ORDER_ASCENDING;
-                $this->qb->addOrderBy($this->db->quoteIdentifier($order), self::ORDER_ASCENDING);
+                $this->qb->addOrderBy($this->qi($order), self::ORDER_ASCENDING);
             }
-            $this->order[] = $order;
         }
         return $this;
     }
@@ -481,63 +411,12 @@ class Query implements \Countable, \Iterator
      */
     public function buildQuery()
     {
-        $joins = $this->autoJoin ? $this->buildJoins() : '';
-        $sql = 'SELECT ';
-        $sql .= $this->buildColumns();
-        $sql .= ' FROM ';
-        $sql .= $this->db->quoteIdentifier($this->table) . ' ' . $this->db->quoteIdentifier('t');
-        $sql .= $joins;
-        $sql .= ' ';
-        $sql .= $this->buildWhere();
-        $sql .= ' ';
-        $sql .= $this->buildSort();
-        $sql .= ' ';
-        $sql .= $this->buildLimit();
-        $this->queryStringCache = $sql;
-        return $sql;
-    }
-
-    /**
-     * limit part of sql query string
-     * @return string
-     */
-    public function buildLimit()
-    {
-        if ($this->limit !== null) {
-            if ($this->offset) {
-                return 'LIMIT ' . $this->limit . ' OFFSET ' . $this->offset;
-            } else {
-                return 'LIMIT ' . $this->limit;
-            }
-        } else {
-            return '';
+        if ($this->autoJoin) {
+            $this->buildJoins();
         }
-    }
-
-    /**
-     * order by part of sql query string
-     * @return string
-     */
-    public function buildSort()
-    {
-        if (count($this->order) > 0) {
-            return 'ORDER BY ' . implode(', ', $this->order) . '';
-        } else {
-            return '';
-        }
-    }
-
-    /**
-     * where part of sql query string
-     * @return string
-     */
-    public function buildWhere()
-    {
-        if (count($this->where) > 0) {
-            return 'WHERE (' . implode(') AND (', $this->where) . ')';
-        } else {
-            return '';
-        }
+        $this->buildColumns();
+        $this->queryStringCache = $this->qb->getSQL();
+        return $this->queryStringCache;
     }
 
     /**
@@ -560,11 +439,11 @@ class Query implements \Countable, \Iterator
                 }
                 /** @var ForeignKey $field */
                 $relClass = $field->relationClass;
-                $tbl = $this->db->quoteIdentifier($relClass::metadata()->getDbTableName()) . ' ' . $this->db->quoteIdentifier('j' . $i);
-                //$on = sprintf('%s = %s', $this->db->quoteIdentifier('t.' . $field->db_column), $this->db->quoteIdentifier('j' . $i . '.' . $field->to_field));
-                $on = sprintf('%s = %s', $this->db->quoteIdentifier('t.' . $field->db_column), $this->db->quoteIdentifier('j' . $i . '.' . $field->to_field));
+                $tbl = $this->qi($relClass::metadata()->getDbTableName()) . ' ' . $this->qi('j' . $i);
+                //$on = sprintf('%s = %s', $this->qi('t.' . $field->db_column), $this->qi('j' . $i . '.' . $field->to_field));
+                $on = sprintf('%s = %s', $this->qi('t.' . $field->db_column), $this->qi('j' . $i . '.' . $field->to_field));
                 $join .= ' LEFT JOIN ' . $tbl . ' ON ' . $on;
-                $this->qb->leftJoin('t', $relClass::metadata()->getDbTableName(), 'j' . $i, $on);
+                $this->qb->leftJoin($this->qi('t'), $this->qi($relClass::metadata()->getDbTableName()), $this->qi('j' . $i), $on);
                 foreach ($relClass::metadata()->getDbColNames() as $rCol) {
                     $this->columns[$field->name . '__' . $rCol] = 'j' . $i . '.' . $rCol;
                 }
@@ -593,9 +472,9 @@ class Query implements \Countable, \Iterator
                 $parts[] = strval($colName);
             } else {
                 if (is_int($alias)) {
-                    $parts[] = $this->db->quoteIdentifier($colName);
+                    $parts[] = $this->qi($colName);
                 } else {
-                    $parts[] = $this->db->quoteIdentifier($colName) . ' as ' . $this->db->quoteIdentifier($alias);
+                    $parts[] = $this->qi($colName) . ' as ' . $this->qi($alias);
                 }
             }
             $this->qb->addSelect(end($parts));
@@ -605,21 +484,21 @@ class Query implements \Countable, \Iterator
 
     /**
      * lazy-load execution of sql query
-     * @return PdoStatement|null|\PDOStatement
+     * @return statement|null|\statement
      */
     protected function exec()
     {
-        if ($this->pdostatement === null) {
+        if ($this->statement === null) {
             if (!$this->queryStringCache) {
                 $this->buildQuery();
             }
-            //$this->pdostatement = $this->db->query($this->queryStringCache, \PDO::FETCH_CLASS, $this->metadata->getModelClass(), array('isNewRecord' => false));
-            $this->pdostatement = $this->db->query($this->queryStringCache, \PDO::FETCH_ASSOC);
-            $this->rowCount = $this->pdostatement->rowCount();
+            //$this->statement = $this->db->query($this->queryStringCache, \PDO::FETCH_CLASS, $this->metadata->getModelClass(), array('isNewRecord' => false));
+            $this->statement = $this->db->query($this->queryStringCache, \PDO::FETCH_ASSOC);
+            $this->rowCount = $this->statement->rowCount();
             //dump('Exec [' . $this->queryStringCache . ']');
             pr('Exec [' . $this->queryStringCache . ']');
         }
-        return $this->pdostatement;
+        return $this->statement;
     }
 
     /**
@@ -652,7 +531,7 @@ class Query implements \Countable, \Iterator
     }
 
     /**
-     * force disabling caching records for multiple iterations
+     * force disabling caching records for massive iterations
      * @return $this
      */
     public function noCache()
@@ -669,7 +548,7 @@ class Query implements \Countable, \Iterator
     {
         if (count($this->where) > 0 || $this->limit) {
             $q = clone $this;
-            $q->reset(self::WHERE)->reset(self::LIMIT);
+//            $q->reset(self::WHERE)->reset(self::LIMIT);
             return $q;
         } else {
             return $this;
@@ -682,15 +561,8 @@ class Query implements \Countable, \Iterator
      */
     public function doCount()
     {
-        $q = clone $this;
-        $q->reset(self::ORDER)->reset(self::LIMIT);
-
-        $joins = $this->autoJoin ? $q->buildJoins() : '';
-        $sql = 'SELECT COUNT(*) FROM ';
-        $sql .= $this->db->quoteIdentifier($this->table) . ' ' . $this->db->quoteIdentifier('t');
-        $sql .= $joins;
-        $sql .= ' ';
-        $sql .= $q->buildWhere();
+        $qb = clone $this->qb;
+        $sql = $qb->resetQueryPart('orderBy')->setMaxResults(null)->setFirstResult(null)->select('COUNT(*)')->getSQL();
         pr('Exec [' . $sql . ']');
         return $this->db->query($sql)->fetchColumn(0);
     }
@@ -783,40 +655,15 @@ class Query implements \Countable, \Iterator
      */
     public function reset($part = null)
     {
-        switch ($part) {
-            case self::COLUMNS:
-                $this->columns = array();
-                break;
-            case self::JOINS:
-                $this->joins = array();
-                break;
-            case self::WHERE:
-                $this->where = array();
-                break;
-            case self::GROUP:
-                $this->group = null;
-                break;
-            case self::HAVING:
-                $this->having = null;
-                break;
-            case self::LIMIT:
-                $this->limit = null;
-                $this->offset = null;
-                break;
-//            case self::OFFSET:
-//                $this->offset = null;
-//                break;
-            case self::ORDER:
-                $this->order = array();
-                break;
-            default:
-                break;
-        }
+        $this->qb->resetQueryPart($part);
+
         $this->queryStringCache = null;
-        $this->pdostatement = null;
+        $this->columns = array();
+
         $this->pointer = 0;
         $this->rowCount = 0;
         $this->rowCache = array();
+
         return $this;
     }
 
@@ -826,18 +673,36 @@ class Query implements \Countable, \Iterator
      */
     protected function resetAll()
     {
+        $this->qb = $this->db->createQueryBuilder();
+        $this->qb->from($this->qi($this->table), $this->qi('t'));
+
         $this->queryStringCache = null;
         $this->columns = array();
-        $this->joins = array();
-        $this->where = array();
-        $this->limit = null;
-        $this->offset = null;
-        $this->order = array();
 
-        $this->pdostatement = null;
         $this->pointer = 0;
         $this->rowCount = 0;
         $this->rowCache = array();
         return $this;
+    }
+
+    /**
+     * alias for $this->db->quoteIdentifier
+     * @param $v
+     * @return string
+     */
+    protected function qi($v)
+    {
+        return $this->db->quoteIdentifier($v);
+    }
+
+    /**
+     * @return LookupAbstract
+     */
+    protected function lookuper()
+    {
+        if (!isset(self::$lookUp)) {
+            self::$lookUp = LookupAbstract::factory($this->db);
+        }
+        return self::$lookUp;
     }
 }
