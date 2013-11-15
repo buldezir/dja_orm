@@ -420,6 +420,7 @@ class Query implements \Countable, \Iterator
     }
 
     /**
+     * @todo: nested joins
      * setup select columns and
      * joins part of sql query string
      * @return string
@@ -496,7 +497,7 @@ class Query implements \Countable, \Iterator
             $this->statement = $this->db->query($this->queryStringCache, \PDO::FETCH_ASSOC);
             $this->rowCount = $this->statement->rowCount();
             //dump('Exec [' . $this->queryStringCache . ']');
-            pr('Exec [' . $this->queryStringCache . ']');
+            //pr('Exec [' . $this->queryStringCache . ']');
         }
         return $this->statement;
     }

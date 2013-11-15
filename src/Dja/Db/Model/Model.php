@@ -81,11 +81,16 @@ abstract class Model implements \ArrayAccess
     /**
      * new queryset
      * an iterator represents db rows
+     * @param bool $biiig
      * @return Query
      */
-    public static function objects()
+    public static function objects($biiig = false)
     {
-        return new Query(static::metadata());
+        if (false === $biiig) {
+            return new Query(static::metadata());
+        } else {
+            return new RowsetQuery(static::metadata());
+        }
     }
 
     /**
