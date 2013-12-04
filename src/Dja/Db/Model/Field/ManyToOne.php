@@ -12,17 +12,16 @@ namespace Dja\Db\Model\Field;
  * Class ManyToOne
  * @package Dja\Db\Model\Field
  */
-class ManyToOne extends Base implements ManyRelation
+class ManyToOne extends Relation implements ManyRelation
 {
     public function __construct(array $options = array())
     {
-        $this->_options['to_field'] = null;
         $this->_options['self_field'] = null;
-        $this->_options['noBackwards'] = false;
 
         parent::__construct($options);
 
         $this->setOption('db_column', false);
+        $this->setOption('editable', false);
 
         if (!$this->to_field) {
             throw new \Exception('"to_field" is required option for Dja\\Db\\Model\\Field\\ManyToOne');
@@ -35,14 +34,6 @@ class ManyToOne extends Base implements ManyRelation
         if ($this->self_field === null) {
             $this->setOption('self_field', $this->metadata->getPrimaryKey());
         }
-    }
-
-    /**
-     * @return bool
-     */
-    public function isRelation()
-    {
-        return true;
     }
 
     /**

@@ -24,7 +24,7 @@ abstract class Model implements \ArrayAccess
     /**
      * @var array
      */
-    protected static $fields = array();
+    protected static $fields = [];
 
     /**
      * @var EventDispatcher
@@ -49,22 +49,22 @@ abstract class Model implements \ArrayAccess
     /**
      * @var array
      */
-    protected $data = array();
+    protected $data = [];
 
     /**
      * @var array
      */
-    protected $cleanData = array();
+    protected $cleanData = [];
 
     /**
      * @var array
      */
-    protected $relationDataCache = array();
+    protected $relationDataCache = [];
 
     /**
      * @var array
      */
-    protected $validationErrors = array();
+    protected $validationErrors = [];
 
     /** @var Metadata */
     protected $metadata;
@@ -204,7 +204,7 @@ abstract class Model implements \ArrayAccess
     }
 
     /**
-     * dispatch local and global model events
+     * dispatch global and local model events
      * @param string $eventName
      * @return Event
      */
@@ -289,16 +289,16 @@ abstract class Model implements \ArrayAccess
                 $this->setDefaultValues();
                 $newPK = static::objects()->insert($this);
                 $this->data[$this->metadata->pk->db_column] = $newPK;
-                $this->cleanData = $this->data;
-                $this->isNewRecord = false;
             } else {
-                $updData = array_diff($this->data, $this->cleanData);
-                unset($updData[$this->metadata->pk->db_column]);
-                if ($updData) {
-                    static::objects()->filter('pk', $this->pk)->update($updData);
+                $updData = $this->getChangedValues();
+                //unset($updData[$this->metadata->pk->db_column]);
+                if (count($updData) > 0) {
+                    static::objects()->filter(['pk' => $this->pk])->update($updData);
                 }
             }
             $this->eventDispatch(self::EVENT_AFTER_SAVE);
+            $this->isNewRecord = false; // with this we can tell in EVENT_AFTER_SAVE was it update or insert action
+            $this->cleanData = $this->data;
         }
     }
 
@@ -308,7 +308,7 @@ abstract class Model implements \ArrayAccess
     public function delete()
     {
         if (!$this->eventDispatch(self::EVENT_BEFORE_DELETE)->isPropagationStopped()) {
-            static::objects()->filter('pk', $this->pk)->delete();
+            static::objects()->filter(['pk' => $this->pk])->delete();
             $this->eventDispatch(self::EVENT_AFTER_DELETE);
         }
     }
@@ -319,6 +319,14 @@ abstract class Model implements \ArrayAccess
     public function reset()
     {
         $this->data = $this->cleanData;
+    }
+
+    /**
+     * @return array
+     */
+    public function getChangedValues()
+    {
+        return array_udiff_assoc($this->data, $this->cleanData, function($a, $b){ if ($a === $b) { return 0; } else return 1; });
     }
 
     /**

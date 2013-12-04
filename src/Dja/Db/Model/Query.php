@@ -146,13 +146,14 @@ class Query implements \Countable, \Iterator
      */
     public function update(array $data)
     {
-//        if (count($this->where) === 0) {
-//            throw new \Exception('must be WHERE conditions for update');
-//        }
+        if (count($this->qb->getQueryPart('where')) === 0) {
+            throw new \Exception('must be WHERE conditions for update');
+        }
         $this->qb->update($this->qi($this->table), $this->qi('t'));
         foreach ($data as $key => $value) {
             $this->qb->set($this->qi($key), $this->db->quote($this->metadata->getField($key)->dbPrepValue($value)));
         }
+        echo $this->qb->getSQL();
         return $this->qb->execute();
     }
 
@@ -162,14 +163,11 @@ class Query implements \Countable, \Iterator
      */
     public function delete()
     {
-        if (count($this->where) === 0) {
+        if (count($this->qb->getQueryPart('where')) === 0) {
             throw new \Exception('must be WHERE conditions for delete');
         }
-        $sql = 'DELETE FROM ';
-        $sql .= $this->qi($this->table) . ' ' . $this->qi('t');
-        $sql .= ' ';
-        $sql .= $this->buildWhere();
-        return $this->db->exec($sql);
+        $this->qb->delete($this->qi($this->table), $this->qi('t'));
+        return $this->qb->execute();
     }
 
     /**

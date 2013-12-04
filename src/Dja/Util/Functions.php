@@ -6,6 +6,77 @@
  */
 
 /**
+ * @param array $array1
+ * @param array $array2
+ * @return array
+ */
+function array_diff_assoc_recursive($array1, $array2) {
+    $difference=array();
+    foreach($array1 as $key => $value) {
+        if( is_array($value) ) {
+            if( !isset($array2[$key]) || !is_array($array2[$key]) ) {
+                $difference[$key] = $value;
+            } else {
+                $new_diff = array_diff_assoc_recursive($value, $array2[$key]);
+                if( !empty($new_diff) )
+                    $difference[$key] = $new_diff;
+            }
+        } else if( !array_key_exists($key,$array2) || $array2[$key] !== $value ) {
+            $difference[$key] = $value;
+        }
+    }
+    return $difference;
+}
+
+/**
+ * http://stackoverflow.com/questions/14445582/change-ipv4-to-ipv6-string
+ * @param $addr_str
+ * @return bool|string
+ */
+function expand_ip_address($addr_str)
+{
+    /* First convert to binary, which also does syntax checking */
+    $addr_bin = @inet_pton($addr_str);
+    if ($addr_bin === FALSE) {
+        return FALSE;
+    }
+    $addr_hex = bin2hex($addr_bin);
+    /* See if this is an IPv4-Compatible IPv6 address (deprecated) or an
+       IPv4-Mapped IPv6 Address (used when IPv4 connections are mapped to
+       an IPv6 sockets and convert it to a normal IPv4 address */
+    if (strlen($addr_bin) === 16 && substr($addr_hex, 0, 20) === str_repeat('0', 20)) {
+        /* First 80 bits are zero: now see if bits 81-96 are either all 0 or all 1 */
+        if (substr($addr_hex, 20, 4) === '0000' || substr($addr_hex, 20, 4) === 'ffff') {
+            /* Remove leading bits so only the IPv4 bits remain */
+            $addr_bin = substr($addr_hex, 12);
+        }
+    }
+    /* Then differentiate between IPv4 and IPv6 */
+    if (strlen($addr_bin) === 4) {
+        /* IPv4: print each byte as 3 digits and add dots between them */
+        $ipv4_bytes = str_split($addr_bin);
+        $ipv4_ints = array_map('ord', $ipv4_bytes);
+        return vsprintf('%03d.%03d.%03d.%03d', $ipv4_ints);
+    } else {
+        /* IPv6: print as hex and add colons between each group of 4 hex digits */
+        return implode(':', str_split($addr_hex, 4));
+    }
+}
+
+/**
+ * easy slug making func
+ * http://www.php.net/manual/en/transliterator.transliterate.php
+ * @param $string
+ * @return string
+ */
+function slugify($string)
+{
+    $string = transliterator_transliterate("Any-Latin; NFD; [:Nonspacing Mark:] Remove; NFC; [:Punctuation:] Remove; Lower();", $string);
+    $string = preg_replace('/[-\s]+/', '-', $string);
+    return trim($string, '-');
+}
+
+/**
  * @param $shortName
  * @return string
  */
@@ -206,3 +277,14 @@ function formatBytes($n, $sep = '')
     }
     return $n . $sep . 'B';
 }
+
+/**
+ * @param int $limit
+ * @return int[]
+ */
+//function xrange($limit)
+//{
+//    for ($i = 0; $i <= $limit; $i++) {
+//        yield $i;
+//    }
+//}

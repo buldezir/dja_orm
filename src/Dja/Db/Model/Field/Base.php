@@ -30,39 +30,37 @@ class Base
     /**
      * @var array
      */
-    protected $_options = array(
+    protected $_options = [
         'name'         => null,
-        'ownerClass'   => null,
-        'relationClass'=> null,
         'type'         => null,
         'primary_key'  => false,
         'db_column'    => null,
         'db_index'     => false,
         'max_length'   => null,
-        'is_blank'     => true,
-        'is_null'      => false,
-        'is_unique'    => false,
+        'blank'        => true,
+        'null'         => false,
+        'unique'       => false,
         'choices'      => null,
-        'required'     => false,
         'default'      => null,
         'editable'     => true,
         'help_text'    => '',
         'verbose_name' => null,
         'using'        => null,
         'auto_increment'=> false,
-    );
+        'ownerClass' => null,
+    ];
 
     /**
      * @var Metadata
      */
     protected $metadata;
 
-    protected $validators = array();
+    protected $validators = [];
 
     /**
      * @param array $options
      */
-    public function __construct(array $options = array())
+    public function __construct(array $options = [])
     {
         $this->setOptions($options);
     }
@@ -156,14 +154,14 @@ class Base
         if (!$this->editable) {
             return;
         }
-        if (!$this->is_null && $value === null) {
+        if (!$this->null && $value === null) {
             throw new \InvalidArgumentException("Field '{$this->name}' is not nullable");
         }
-        if (!$this->is_blank && empty($value)) {
+        if (!$this->blank && empty($value)) {
             throw new \InvalidArgumentException("Field '{$this->name}' cannot be empty");
         }
         foreach ($this->validators as &$validator) {
-            $validator();
+            call_user_func_array($validator, [$value, $this]);
         }
     }
 
@@ -182,6 +180,7 @@ class Base
     }
 
     /**
+     * call with args ($value, $this)
      * @param callable $v
      * @return $this
      */
@@ -261,7 +260,7 @@ class Base
         if ($this->issetOption($key)) {
             return $this->_options[$key];
         }
-        throw new \Exception('No such option!');
+        throw new \Exception("No '{$key}' option!");
     }
 
     /**
@@ -275,7 +274,7 @@ class Base
         if ($this->issetOption($key)) {
             $this->_options[$key] = $value;
         } else {
-            throw new \Exception('No such option!');
+            throw new \Exception("No '{$key}' option!");
         }
         return $this;
     }

@@ -20,23 +20,19 @@ class Email extends Char
      */
     protected $re = "#^[a-zA-Z0-9.!\#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$#";
 
-    public function isValid($value)
+    public function __construct(array $options = array())
     {
-        if (parent::isValid($value) && preg_match($this->re, $value)) {
-            return true;
-        }
-        return false;
+        $this->_options['max_length'] = 64;
+
+        parent::__construct($options);
     }
 
     public function validate($value)
     {
         parent::validate($value);
-        $msgs = array();
-        if (!preg_match($this->re, $value)) {
-            $msgs[] = '"'.$value.'" is not a valid email';
-        }
-        if (count($msgs) > 0) {
-            throw new \Dja\Db\Model\ValidationError($msgs);
+        if (!filter_var($value, FILTER_VALIDATE_EMAIL)) {
+        //if (!preg_match($this->re, $value)) {
+            throw new \InvalidArgumentException("Field '{$this->name}' must be in valid email format");
         }
     }
 }

@@ -14,14 +14,10 @@ namespace Dja\Db\Model\Field;
  * @property string $to_field  field name in rel table
  * @property string $related_name  name for backwards relation
  */
-class ForeignKey extends Base implements SingleRelation
+class ForeignKey extends Relation implements SingleRelation
 {
     public function __construct(array $options = array())
     {
-        $this->_options['related_name'] = null; // this is name of virtual field of relationClass which link to this model or modelquery
-        $this->_options['to_field'] = null;
-        $this->_options['noBackwards'] = false;
-
         parent::__construct($options);
 
         $this->setOption('db_index', true); // always index this col (?)
@@ -35,7 +31,8 @@ class ForeignKey extends Base implements SingleRelation
             $this->setOption('to_field', $relationClass::metadata()->getPrimaryKey());
         }
         if ($this->db_column === null) {
-            $this->setOption('db_column', $this->name . '_id');
+            $dbcol = strpos($this->name, '_id' !== false) ? $this->name : $this->name . '_id';
+            $this->setOption('db_column', $dbcol);
         }
         if ($this->related_name === null) {
             $this->setOption('related_name', $this->metadata->getDbTableName() . '_set');
@@ -77,14 +74,33 @@ class ForeignKey extends Base implements SingleRelation
         return $model->pk;
     }
 
-    public function isValid($value)
+    public function validate($value)
     {
-        return ((is_object($value) && $value instanceof \Dja\Db\Model\Model) || intval($value) > 0);
+        parent::validate($value);
+
+        if (is_int($value)) {
+            if ($value <= 0) {
+                throw new \InvalidArgumentException("Field '{$this->name}' must be integer > 0");
+            }
+        } elseif (is_object($value)) {
+            if (!$value instanceof \Dja\Db\Model\Model) {
+                throw new \InvalidArgumentException("Field '{$this->name}' must be instance of \\Dja\\Db\\Model\\Model");
+            }
+            if (get_class($value) !== $this->relationClass) {
+                throw new \InvalidArgumentException("Field '{$this->name}' must be instance of {$this->relationClass}");
+            }
+        } else {
+            throw new \InvalidArgumentException("Field '{$this->name}' must be integer or object");
+        }
     }
 
-    public function isRelation()
+    public function dbPrepValue($value)
     {
-        return true;
+        if (is_object($value)) {
+            return $value->__get($this->to_field);
+        } else {
+            return intval($value);
+        }
     }
 
     /**

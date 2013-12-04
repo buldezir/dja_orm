@@ -19,21 +19,19 @@ namespace Dja\Db\Model\Field;
  * @property \Dja\Db\Model\Model $throughClass  model for storing relations
  *
  */
-class ManyToMany extends Base implements ManyToManyRelation
+class ManyToMany extends Relation implements ManyToManyRelation
 {
     public function __construct(array $options = array())
     {
-        $this->_options['to_field'] = null;
         $this->_options['self_field'] = null;
-        $this->_options['related_name'] = null;
         $this->_options['db_table'] = null;
         $this->_options['limit_choices_to'] = null;
         $this->_options['throughClass'] = null;
-        $this->_options['noBackwards'] = false;
 
         parent::__construct($options);
 
         $this->setOption('db_column', false);
+        $this->setOption('editable', false);
 
         /*if (!$this->to_field) {
             throw new \Exception('"to_field" is required option for Dja\\Db\\Model\\Field\\ManyToOne');
@@ -82,14 +80,6 @@ class ManyToMany extends Base implements ManyToManyRelation
             'noBackwards' => true,
         );
         $relationClass::metadata()->addField($this->related_name, $options);
-    }
-
-    /**
-     * @return bool
-     */
-    public function isRelation()
-    {
-        return true;
     }
 
     /**
