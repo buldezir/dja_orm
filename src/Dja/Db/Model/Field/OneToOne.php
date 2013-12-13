@@ -23,15 +23,14 @@ class OneToOne extends ForeignKey implements SingleRelation
     protected function _setupBackwardsRelation()
     {
         $ownerClass = $this->getOption('ownerClass');
-        $remoteClass = $this->getOption('relationClass');
-        if (!$remoteClass::metadata()->__isset($this->related_name)) {
+        if (!$this->getRelationMetadata()->__isset($this->related_name)) {
             $options = array(
                 'OneToOne',
                 'relationClass' => $ownerClass,
                 'to_field' => $this->db_column,
                 'noBackwards' => true,
             );
-            $remoteClass::metadata()->addField($this->related_name, $options);
+            $this->getRelationMetadata()->addField($this->related_name, $options);
         }
     }
 }

@@ -171,8 +171,10 @@ abstract class Model implements \ArrayAccess
         $relData = array();
         foreach ($rawData as $key => $value) {
             if (strpos($key, '__') !== false) {
-                list($relKey, $relCol) = explode('__', $key);
-                $relData[$relKey][$relCol] = $value;
+                //list($relKey, $relCol) = explode('__', $key);
+                $tmp = explode('__', $key);
+                $relKey = array_shift($tmp);
+                $relData[$relKey][implode('__', $tmp)] = $value;
             } else {
                 // todo: think about workaround, because method_exists give biiig cpu overhead
                 // local:
@@ -194,7 +196,7 @@ abstract class Model implements \ArrayAccess
             if ($field->isRelation()) {
                 if ($this->_get($field->db_column)) {
                     $relClass = $field->relationClass;
-                    $this->relationDataCache[$rel] = new $relClass($data, false, true);
+                    $this->relationDataCache[$rel] = new $relClass($data, false, $fastRawSet);
                 }
             }
         }
@@ -451,11 +453,11 @@ abstract class Model implements \ArrayAccess
      */
     public function toArray()
     {
-        foreach ($this->relationDataCache as $c) {
-            if ($c instanceof Model) {
-                dump($c->toArray());
-            }
-        }
+//        foreach ($this->relationDataCache as $key => $c) {
+//            if ($c instanceof Model) {
+//                dump($key, $c->toArray());
+//            }
+//        }
         return $this->data;
     }
 

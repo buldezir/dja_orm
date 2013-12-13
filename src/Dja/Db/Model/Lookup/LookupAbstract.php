@@ -90,6 +90,10 @@ abstract class LookupAbstract
                     $op = 'isnull';
                     $negate = false;
                     break;
+                case 'isnull':
+                    $op = 'isnotnull';
+                    $negate = false;
+                    break;
                 default:
                     break;
             }

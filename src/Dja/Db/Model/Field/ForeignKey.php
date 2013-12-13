@@ -26,9 +26,7 @@ class ForeignKey extends Relation implements SingleRelation
     public function init()
     {
         if ($this->to_field === null) {
-            /** @var \Dja\Db\Model\Model $relationClass */
-            $relationClass = $this->relationClass;
-            $this->setOption('to_field', $relationClass::metadata()->getPrimaryKey());
+            $this->setOption('to_field', $this->getRelationMetadata()->getPrimaryKey());
         }
         if ($this->db_column === null) {
             $dbcol = strpos($this->name, '_id' !== false) ? $this->name : $this->name . '_id';

@@ -45,9 +45,7 @@ class ManyToMany extends Relation implements ManyToManyRelation
     public function init()
     {
         if ($this->to_field === null) {
-            /** @var \Dja\Db\Model\Model $relationClass */
-            $relationClass = $this->relationClass;
-            $this->setOption('to_field', $relationClass::metadata()->getPrimaryKey());
+            $this->setOption('to_field', $this->getRelationMetadata()->getPrimaryKey());
         }
         if ($this->self_field === null) {
             $this->setOption('self_field', $this->metadata->getPrimaryKey());
@@ -70,7 +68,6 @@ class ManyToMany extends Relation implements ManyToManyRelation
     protected function _setupBackwardsRelation()
     {
         $ownerClass = $this->getOption('ownerClass');
-        $relationClass = $this->getOption('relationClass');
         $options = array(
             'ManyToMany',
             'relationClass' => $ownerClass,
@@ -79,7 +76,7 @@ class ManyToMany extends Relation implements ManyToManyRelation
             'db_table' => $this->db_table,
             'noBackwards' => true,
         );
-        $relationClass::metadata()->addField($this->related_name, $options);
+        $this->getRelationMetadata()->addField($this->related_name, $options);
     }
 
     /**

@@ -103,6 +103,20 @@ class Metadata
     }
 
     /**
+     * @param array $data
+     * @return array
+     */
+    public function filterData(array $data)
+    {
+        foreach ($data as $key => $value) {
+            if (isset($this->$key)) {
+                $data[$key] = $this->getField($key)->fromDbValue($value);
+            }
+        }
+        return $data;
+    }
+
+    /**
      * for model inheritance
      * @param \ReflectionClass $refl
      * @return array
@@ -162,13 +176,13 @@ class Metadata
         $fieldObj = new $fieldClass($options);
         $baseClass = __NAMESPACE__ . '\\Field\\Base';
         if (!$fieldObj instanceof $baseClass) {
-            throw new \Exception('Field class must be subclass of ' . $baseClass);
+            throw new \Exception("Field '$name' class must be subclass of '$baseClass'");
         }
         $fieldObj->setMetadata($this);
         $fieldObj->init();
         if ($fieldObj instanceof Field\ManyRelation) {
             if (array_key_exists($name, $this->_allFields)) {
-                throw new \Exception('Cant be fields with same name or db_column!');
+                throw new \Exception("Cant be fields with same name or db_column! ($name)");
             } else {
                 $this->_many2manyFields[$name] = $fieldObj;
                 $this->_allFields[$name] = $fieldObj;
@@ -177,7 +191,7 @@ class Metadata
         } else {
             if ($fieldObj->isRelation()) {
                 if (array_key_exists($fieldObj->db_column, $this->_allFields) || array_key_exists($name, $this->_allFields)) {
-                    throw new \Exception('Cant be fields with same name or db_column!');
+                    throw new \Exception("Cant be fields with same name or db_column! ($name)");
                 } else {
                     $this->_localFields[$fieldObj->db_column] = $fieldObj;
                     $this->_virtualFields[$name] = $fieldObj;
@@ -186,7 +200,7 @@ class Metadata
                 }
             } else {
                 if (array_key_exists($name, $this->_allFields)) {
-                    throw new \Exception('Cant be fields with same name or db_column!');
+                    throw new \Exception("Cant be fields with same name or db_column! ($name)");
                 } else {
                     $this->_localFields[$name] = $fieldObj;
                     $this->_allFields[$name] = $fieldObj;
@@ -194,10 +208,10 @@ class Metadata
             }
             if ($fieldObj->primary_key) {
                 if (array_key_exists('pk', $this->_virtualFields)) {
-                    throw new \Exception('More than 1 primary key is not allowed!');
+                    throw new \Exception("More than 1 primary key is not allowed! ($name)");
                 } else {
                     if (array_key_exists('pk', $this->_allFields)) {
-                        throw new \Exception('Cant be fields with same name or db_column!');
+                        throw new \Exception("Cant be fields with same name or db_column! ($name)");
                     } else {
                         $this->_virtualFields['pk'] = $fieldObj;
                         $this->_allFields['pk'] = $fieldObj;
@@ -312,6 +326,20 @@ class Metadata
     public function getMany2ManyFields()
     {
         return $this->_many2manyFields;
+    }
+
+    /**
+     * @param Field\Base $field
+     * @return bool
+     */
+    public function hasFieldObj(Field\Base $field)
+    {
+        foreach ($this->_allFields as $f) {
+            if ($f === $field) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

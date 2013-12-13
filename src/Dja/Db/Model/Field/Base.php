@@ -146,6 +146,19 @@ class Base
     }
 
     /**
+     * for where conditions
+     * @param $value
+     * @return mixed
+     */
+    public function dbPrepLookup($value)
+    {
+        if (null !== $value) {
+            $value = $this->dbPrepValue($value);
+        }
+        return $value;
+    }
+
+    /**
      * @param $value
      * @throws \Exception
      */

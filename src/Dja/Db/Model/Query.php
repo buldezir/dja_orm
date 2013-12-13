@@ -11,7 +11,6 @@ use Dja\Db\Model\Field\ForeignKey;
 use Dja\Db\Model\Lookup\LookupAbstract;
 
 /**
- * todo: cleanup, may be extract query builder to other class
  * fluent interface
  * Class Query
  * @package Dja\Db\Model
@@ -31,7 +30,17 @@ class Query implements \Countable, \Iterator
     /**
      * @var array
      */
-    protected $columns = array();
+    protected $columns = [];
+
+    /**
+     * @var array
+     */
+    protected $aliasHash = [];
+
+    /**
+     * @var array
+     */
+    protected $joins = [];
 
     /**
      * @var Metadata
@@ -68,13 +77,13 @@ class Query implements \Countable, \Iterator
 
     protected $rowCount = 0;
 
-    protected $rowCache = array();
+    protected $rowCache = [];
 
     protected $forceNoCache = false;
 
     protected $autoJoin = false;
 
-    protected $autoJoinFilter = array();
+    protected $autoJoinFilter = [];
 
     /**
      * for many rel query
@@ -253,9 +262,9 @@ class Query implements \Countable, \Iterator
     }
 
     /**
-     * @param int $value
-     * @throws \Exception
+     * @param $value
      * @return Model
+     * @throws \Exception
      */
     public function get($value)
     {
@@ -270,7 +279,7 @@ class Query implements \Countable, \Iterator
     }
 
     /**
-     * @param int $limit
+     * @param $limit
      * @param null $offset
      * @return $this
      */
@@ -284,7 +293,6 @@ class Query implements \Countable, \Iterator
      * array('is_active__exact' => 1, 'is_superuser__exact' => F('is_staff'))
      * array('pub_date__lte' => '2006-01-01')
      * array('user__is_active' => true)
-     *
      * @param array $arguments
      * @param bool $negate
      * @return array
@@ -292,30 +300,35 @@ class Query implements \Countable, \Iterator
      */
     public function explaneArguments(array $arguments, $negate = false)
     {
-        $result = array();
+        $this->buildJoins(); // !!!!!!!!!!!!!!!!!!
+        $aHashFlip = array_flip($this->aliasHash);
+
+        $result = [];
         foreach ($arguments as $lookup => $value) {
             // if exact lookuptype
             $lookupArr = explode('__', $lookup);
-            $field = $this->metadata->getField($lookupArr[0]);
             $lookupType = end($lookupArr);
             if ($this->lookuper()->issetLookup($lookupType)) {
                 $lookupType = array_pop($lookupArr);
             } else {
                 $lookupType = 'exact';
             }
-            if (!$field->isRelation() || $this->metadata->isLocal($lookupArr[0])) {
+
+            $field = $this->findLookUpField($this->metadata, $lookupArr); //$this->metadata->getField($lookupArr[0]);
+
+            if ($this->metadata->hasFieldObj($field)) {
                 $db_column = $field->db_column;
                 $prefix = 't.';
             } else {
                 $prefix = '';
                 $db_column_a = implode('__', $lookupArr);
-                if (!isset($this->columns[$db_column_a])) {
+                if (!isset($aHashFlip[$db_column_a])) {
                     throw new \Exception('Cant lookup for related field without selectRelated()');
                 }
-                $db_column = $this->columns[$db_column_a];
+                $db_column = $this->columns[$aHashFlip[$db_column_a]];
             }
 
-            $value = $field->dbPrepValue($value);
+            $value = $field->dbPrepLookup($value);
             list($db_column, $lookupQ, $value) = $this->lookuper()->getLookup($lookupType, $this->qi($prefix . $db_column), $value, $negate);
             if (is_array($value)) {
                 $value = implode(', ', $value);
@@ -330,12 +343,26 @@ class Query implements \Countable, \Iterator
     }
 
     /**
+     * @param Metadata $md
+     * @param array $lookupArr
+     * @return Field\Base
+     */
+    protected function findLookUpField(Metadata $md, array $lookupArr)
+    {
+        $f = array_shift($lookupArr);
+        $field = $md->getField($f);
+        if (count($lookupArr) && $field->isRelation()) {
+            $field = $this->findLookUpField($field->getRelationMetadata(), $lookupArr);
+        }
+        return $field;
+    }
+
+    /**
      * no arguments for join all, or related field names
      * @return $this
      */
     public function selectRelated()
     {
-        $args = array();
         if (func_num_args() === 1 && is_array(func_get_arg(0))) {
             $args = func_get_arg(0);
         } else {
@@ -411,6 +438,9 @@ class Query implements \Countable, \Iterator
     {
         if ($this->autoJoin) {
             $this->buildJoins();
+            foreach ($this->joins as $row) {
+                $this->qb->leftJoin($this->qi($row['selfAlias']), $this->qi($row['joinTable']), $this->qi($row['joinAlias']), $row['on']);
+            }
         }
         $this->buildColumns();
         $this->queryStringCache = $this->qb->getSQL();
@@ -418,40 +448,93 @@ class Query implements \Countable, \Iterator
     }
 
     /**
-     * @todo: nested joins
      * setup select columns and
      * joins part of sql query string
-     * @return string
      */
     public function buildJoins()
     {
-        $relFields = $this->metadata->getRelationFields();
-        if (count($relFields) > 0) {
-            $join = '';
-            $i = 1;
+        if (!empty($this->joins)) {
+            return;
+        }
+        $maxDepth = 3;
+        $processRelations = function ($md, $curPrefix = '', $curAlias = 't', $curDepth = 0) use (&$processRelations, $maxDepth) {
+            /** @var Metadata $md */
+            static $i = 1;
+            if ($curDepth > $maxDepth) {
+                echo 'join depth err. ';
+                return [];
+            }
+            $relFields = $md->getRelationFields();
+            $joinData = [];
             foreach ($relFields as $field) {
                 if (!$field->canAutoJoin()) {
-                    continue;
+                    return;
                 }
-                if (count($this->autoJoinFilter) > 0 && !in_array($field->name, $this->autoJoinFilter)) {
-                    continue;
-                }
+                $columns = [];
+                $aliasHash = [];
                 /** @var ForeignKey $field */
                 $relClass = $field->relationClass;
-                $tbl = $this->qi($relClass::metadata()->getDbTableName()) . ' ' . $this->qi('j' . $i);
-                //$on = sprintf('%s = %s', $this->qi('t.' . $field->db_column), $this->qi('j' . $i . '.' . $field->to_field));
-                $on = sprintf('%s = %s', $this->qi('t.' . $field->db_column), $this->qi('j' . $i . '.' . $field->to_field));
-                $join .= ' LEFT JOIN ' . $tbl . ' ON ' . $on;
-                $this->qb->leftJoin($this->qi('t'), $this->qi($relClass::metadata()->getDbTableName()), $this->qi('j' . $i), $on);
+                $alias = 'j' . $i;
+                $prefix = $curPrefix . $field->name . '__';
+                $on = sprintf('%s = %s', $this->qi($curAlias . '.' . $field->db_column), $this->qi($alias . '.' . $field->to_field));
                 foreach ($relClass::metadata()->getDbColNames() as $rCol) {
-                    $this->columns[$field->name . '__' . $rCol] = 'j' . $i . '.' . $rCol;
+                    $h = md5($prefix . $rCol);
+                    $aliasHash[$h] = $prefix . $rCol;
+                    $columns[$h] = $alias . '.' . $rCol;
                 }
                 $i++;
+                $joinData[] = [
+                    'prefix' => $prefix,
+                    'selfAlias' => $curAlias,
+                    'joinTable' => $relClass::metadata()->getDbTableName(),
+                    'joinAlias' => $alias,
+                    'on' => $on,
+                    'columns' => $columns,
+                    'aliasHash' => $aliasHash,
+                ];
+                foreach ($processRelations($relClass::metadata(), $prefix, $alias, $curDepth + 1) as $tmp) {
+                    $joinData[] = $tmp;
+                }
             }
-            return $join;
-        } else {
-            return '';
+            return $joinData;
+        };
+
+        $this->joins = $processRelations($this->metadata);
+
+        foreach ($this->joins as $row) {
+            foreach ($row['columns'] as $selectF => $selectA) {
+                $this->columns[$selectF] = $selectA;
+            }
+            foreach ($row['aliasHash'] as $h => $f) {
+                $this->aliasHash[$h] = $f;
+            }
         }
+        //var_dump($processRelations($this->metadata));
+    }
+
+    /**
+     * @param array $data
+     * @return array
+     */
+    protected function mapAliasHash($data)
+    {
+        $result = [];
+        foreach ($data as $k => $v) {
+            if (isset($this->aliasHash[$k])) {
+                $result[$this->aliasHash[$k]] = $v;
+            } else {
+                $result[$k] = $v;
+            }
+        }
+        return $result;
+    }
+
+    /**
+     * @return array
+     */
+    public function getAliasHash()
+    {
+        return $this->aliasHash;
     }
 
     /**
@@ -460,7 +543,7 @@ class Query implements \Countable, \Iterator
      */
     public function buildColumns()
     {
-        $parts = array();
+        $parts = [];
 
         foreach ($this->metadata->getDbColNames() as $lCol) {
             $this->columns[] = 't.' . $lCol;
@@ -502,27 +585,42 @@ class Query implements \Countable, \Iterator
 
     /**
      * returns array like from fetchAssoc, not iterator of models, from current query
+     * @param bool $applyDataFilter
      * @return array
      */
-    public function values()
+    public function values($applyDataFilter = false)
     {
         if (!$this->queryStringCache) {
             $this->buildQuery();
         }
-        pr('Exec [' . $this->queryStringCache . ']');
-        return $this->db->query($this->queryStringCache)->fetchAll(\PDO::FETCH_ASSOC);
+//        pr('Exec [' . $this->queryStringCache . ']');
+        $stmt = $this->db->query(str_replace([
+            ':t',
+        ], [
+            $this->table,
+        ], $this->queryStringCache));
+        if ($applyDataFilter) {
+            $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+            foreach ($rows as $i => $row) {
+                $rows[$i] = $this->metadata->filterData($row);
+            }
+            return $rows;
+        } else {
+            return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        }
     }
 
     /**
      * returns key-value dictionary, from current query
      * @param $keyField
      * @param $valueField
+     * @param bool $applyDataFilter
      * @return array
      */
-    public function valuesDict($keyField, $valueField)
+    public function valuesDict($keyField, $valueField, $applyDataFilter = false)
     {
-        $data = $this->values();
-        $result = array();
+        $data = $this->values($applyDataFilter);
+        $result = [];
         foreach ($data as $row) {
             $result[$row[$keyField]] = $row[$valueField];
         }
@@ -562,7 +660,7 @@ class Query implements \Countable, \Iterator
     {
         $qb = clone $this->qb;
         $sql = $qb->resetQueryPart('orderBy')->setMaxResults(null)->setFirstResult(null)->select('COUNT(*)')->getSQL();
-        pr('Exec [' . $sql . ']');
+//        pr('Exec [' . $sql . ']');
         return $this->db->query($sql)->fetchColumn(0);
     }
 
@@ -576,11 +674,11 @@ class Query implements \Countable, \Iterator
     {
         if ($this->forceNoCache) {
             $cls = $this->modelClassName;
-            return new $cls($this->exec()->fetch(), false, true);
+            return new $cls($this->mapAliasHash($this->exec()->fetch()), false, true);
         } else {
             if (!isset($this->rowCache[$this->pointer])) {
                 $cls = $this->modelClassName;
-                $this->rowCache[$this->pointer] = new $cls($this->exec()->fetch(), false);
+                $this->rowCache[$this->pointer] = new $cls($this->mapAliasHash($this->exec()->fetch()), false);
             }
             return $this->rowCache[$this->pointer];
         }
@@ -657,11 +755,13 @@ class Query implements \Countable, \Iterator
         $this->qb->resetQueryPart($part);
 
         $this->queryStringCache = null;
-        $this->columns = array();
+        $this->columns = [];
+        $this->joins = [];
+        $this->aliasHash = [];
 
         $this->pointer = 0;
         $this->rowCount = 0;
-        $this->rowCache = array();
+        $this->rowCache = [];
 
         return $this;
     }
@@ -676,11 +776,13 @@ class Query implements \Countable, \Iterator
         $this->qb->from($this->qi($this->table), $this->qi('t'));
 
         $this->queryStringCache = null;
-        $this->columns = array();
+        $this->columns = [];
+        $this->joins = [];
+        $this->aliasHash = [];
 
         $this->pointer = 0;
         $this->rowCount = 0;
-        $this->rowCache = array();
+        $this->rowCache = [];
         return $this;
     }
 
