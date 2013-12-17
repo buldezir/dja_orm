@@ -116,7 +116,7 @@ class Query implements \Countable, \Iterator
     }
 
     /**
-     * $this->setRawSql('SELECT * FROM table')->values() === $db->query('SELECT * FROM table')->fetchAll()
+     * $this->setRawSql('SELECT * FROM :t WHERE :pk = 1')->values() === $db->query('SELECT * FROM table WHERE long_primary_key = 1')->fetchAll()
      * @param $s
      * @return $this
      */
@@ -162,7 +162,6 @@ class Query implements \Countable, \Iterator
         foreach ($data as $key => $value) {
             $this->qb->set($this->qi($key), $this->db->quote($this->metadata->getField($key)->dbPrepValue($value)));
         }
-        echo $this->qb->getSQL();
         return $this->qb->execute();
     }
 
@@ -300,7 +299,7 @@ class Query implements \Countable, \Iterator
      */
     public function explaneArguments(array $arguments, $negate = false)
     {
-        $this->buildJoins(); // !!!!!!!!!!!!!!!!!!
+        $this->buildJoins(); // !!!!!!!!
         $aHashFlip = array_flip($this->aliasHash);
 
         $result = [];
@@ -314,7 +313,7 @@ class Query implements \Countable, \Iterator
                 $lookupType = 'exact';
             }
 
-            $field = $this->findLookUpField($this->metadata, $lookupArr); //$this->metadata->getField($lookupArr[0]);
+            $field = $this->findLookUpField($this->metadata, $lookupArr);
 
             if ($this->metadata->hasFieldObj($field)) {
                 $db_column = $field->db_column;
@@ -345,7 +344,7 @@ class Query implements \Countable, \Iterator
     /**
      * @param Metadata $md
      * @param array $lookupArr
-     * @return Field\Base
+     * @return Field\Base|Field\Relation
      */
     protected function findLookUpField(Metadata $md, array $lookupArr)
     {
@@ -509,7 +508,6 @@ class Query implements \Countable, \Iterator
                 $this->aliasHash[$h] = $f;
             }
         }
-        //var_dump($processRelations($this->metadata));
     }
 
     /**
@@ -574,11 +572,8 @@ class Query implements \Countable, \Iterator
             if (!$this->queryStringCache) {
                 $this->buildQuery();
             }
-            //$this->statement = $this->db->query($this->queryStringCache, \PDO::FETCH_CLASS, $this->metadata->getModelClass(), array('isNewRecord' => false));
             $this->statement = $this->db->query($this->queryStringCache, \PDO::FETCH_ASSOC);
             $this->rowCount = $this->statement->rowCount();
-            //dump('Exec [' . $this->queryStringCache . ']');
-            //pr('Exec [' . $this->queryStringCache . ']');
         }
         return $this->statement;
     }
@@ -593,7 +588,6 @@ class Query implements \Countable, \Iterator
         if (!$this->queryStringCache) {
             $this->buildQuery();
         }
-//        pr('Exec [' . $this->queryStringCache . ']');
         $stmt = $this->db->query(str_replace([
             ':t',
             ':pk',
@@ -645,9 +639,11 @@ class Query implements \Countable, \Iterator
      */
     public function all()
     {
-        if (count($this->where) > 0 || $this->limit) {
+        if (count($this->qb->getQueryPart('where')) > 0 || $this->qb->getMaxResults() !== null || $this->qb->getFirstResult() !== null) {
             $q = clone $this;
-//            $q->reset(self::WHERE)->reset(self::LIMIT);
+            $q->reset('where');
+            $q->reset('limit');
+            $q->reset('offset');
             return $q;
         } else {
             return $this;
@@ -662,7 +658,6 @@ class Query implements \Countable, \Iterator
     {
         $qb = clone $this->qb;
         $sql = $qb->resetQueryPart('orderBy')->setMaxResults(null)->setFirstResult(null)->select('COUNT(*)')->getSQL();
-//        pr('Exec [' . $sql . ']');
         return $this->db->query($sql)->fetchColumn(0);
     }
 
@@ -752,9 +747,19 @@ class Query implements \Countable, \Iterator
      * @param string $part
      * @return $this
      */
-    public function reset($part = null)
+    public function reset($part)
     {
-        $this->qb->resetQueryPart($part);
+        switch ($part) {
+            case 'limit':
+                $this->qb->setMaxResults(null);
+                break;
+            case 'offset':
+                $this->qb->setFirstResult(null);
+                break;
+            default:
+                $this->qb->resetQueryPart($part);
+                break;
+        }
 
         $this->queryStringCache = null;
         $this->columns = [];

@@ -38,10 +38,10 @@ class RowsetQuery extends Query
     {
         if ($this->forceNoCache) {
             $cls = $this->modelClassName;
-            return new $cls($this->exec()->fetch(), false, true);
+            return new $cls($this->mapAliasHash($this->exec()->fetch()), false, true);
         } else {
             $cls = $this->modelClassName;
-            return new $cls($this->exec()->fetch(), false);
+            return new $cls($this->mapAliasHash($this->exec()->fetch()), false);
         }
     }
 
@@ -103,8 +103,6 @@ class RowsetQuery extends Query
         if ($this->statement === null) {
             $this->statement = $this->qb->execute();
             $this->rowCount = $this->statement->rowCount();
-            //dump('Exec [' . $this->queryStringCache . ']');
-            //pr('Exec [' . $this->qb->getSQL() . ']');
         }
         return $this->statement;
     }
