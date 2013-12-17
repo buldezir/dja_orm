@@ -168,7 +168,7 @@ abstract class Model implements \ArrayAccess
             return $this;
         }
         //dump($rawData);
-        $relData = array();
+        $relData = [];
         foreach ($rawData as $key => $value) {
             if (strpos($key, '__') !== false) {
                 //list($relKey, $relCol) = explode('__', $key);
@@ -246,7 +246,7 @@ abstract class Model implements \ArrayAccess
     protected function addValidationError($field, $errors)
     {
         if (!isset($this->validationErrors[$field])) {
-            $this->validationErrors[$field] = array();
+            $this->validationErrors[$field] = [];
         }
         if (is_array($errors)) {
             foreach ($errors as $err) {
@@ -409,7 +409,6 @@ abstract class Model implements \ArrayAccess
             return $this->$getter();
         } else {
             return $this->_get($name);
-            //throw new \OutOfRangeException("value with key '{$name}' does not exist!");
         }
     }
 
@@ -449,21 +448,34 @@ abstract class Model implements \ArrayAccess
     }
 
     /**
+     * @param int $depth
      * @return array
      */
-    public function toArray()
+    public function toArray($depth = 1)
     {
-//        foreach ($this->relationDataCache as $key => $c) {
-//            if ($c instanceof Model) {
-//                dump($key, $c->toArray());
-//            }
-//        }
-        return $this->data;
+        $result = [];
+        foreach ($this->metadata->getLocalFields() as $field) {
+            $k = $field->name;
+            if ($field->isRelation()) {
+                if ($depth > 1) {
+                    if (isset($this->relationDataCache[$k])) {
+                        $result[$k] = $this->relationDataCache[$k]->toArray($depth - 1);
+                    } else {
+                        $result[$k] = $this->data[$field->db_column];
+                    }
+                } else {
+                    $result[$k] = $this->data[$field->db_column];
+                }
+            } else {
+                $result[$k] = $this->__get($k);
+            }
+        }
+        return $result;
     }
 
     public function export()
     {
-        $result = array();
+        $result = [];
         foreach ($this->metadata->getLocalFields() as $field) {
             if ($field->isRelation()) {
                 $value = $field->viewValue($this->__get($field->name));
@@ -471,12 +483,12 @@ abstract class Model implements \ArrayAccess
                 $value = $field->viewValue($this->__get($field->db_column));
             }
             $name = $field->verbose_name ? $field->verbose_name : implode(' ', array_map('ucfirst', explode('_', $field->name)));
-            $result[$field->db_column] = array(
+            $result[$field->db_column] = [
                 'name' => $name,
                 'value' => $value,
                 'choices' => $field->choices,
 
-            );
+            ];
         }
         return $result;
     }

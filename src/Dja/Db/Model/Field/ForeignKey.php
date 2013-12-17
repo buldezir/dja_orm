@@ -72,6 +72,10 @@ class ForeignKey extends Relation implements SingleRelation
         return $model->pk;
     }
 
+    /**
+     * @param $value
+     * @throws \InvalidArgumentException
+     */
     public function validate($value)
     {
         parent::validate($value);
@@ -92,10 +96,14 @@ class ForeignKey extends Relation implements SingleRelation
         }
     }
 
+    /**
+     * @param $value
+     * @return int|mixed
+     */
     public function dbPrepValue($value)
     {
         if (is_object($value)) {
-            return $value->__get($this->to_field);
+            return intval($value->__get($this->to_field));
         } else {
             return intval($value);
         }

@@ -596,8 +596,10 @@ class Query implements \Countable, \Iterator
 //        pr('Exec [' . $this->queryStringCache . ']');
         $stmt = $this->db->query(str_replace([
             ':t',
+            ':pk',
         ], [
-            $this->table,
+            $this->qi($this->table),
+            $this->qi($this->metadata->getPrimaryKey()),
         ], $this->queryStringCache));
         if ($applyDataFilter) {
             $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
