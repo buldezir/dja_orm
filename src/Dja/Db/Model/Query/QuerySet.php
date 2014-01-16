@@ -12,7 +12,7 @@ class QuerySet extends BaseQuerySet
     /**
      * @return ValuesQuerySet
      */
-    public function values()
+    public function values(array $fields = null)
     {
         $qs = new ValuesQuerySet($this->metadata, $this->qb, $this->db);
         if ($this->joinMaxDepth) {
