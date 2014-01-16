@@ -9,6 +9,27 @@ namespace Dja\Db\Model\Query;
 
 class ValuesQuerySet extends BaseQuerySet
 {
+	/**
+     * @var array
+     */
+    protected $selectFields = [];
+
+	/**
+     * @param Metadata $metadata
+     * @param QueryBuilder $qb
+     * @param Connection $db
+     * @param string $selectKeyField
+     * @param string $selectValueField
+     */
+    public function __construct(Metadata $metadata, QueryBuilder $qb = null, Connection $db = null, array $fields = null)
+    {
+        parent::__construct($metadata, $qb, $db);
+        
+		if (null === $fields) {
+			
+		}
+    }
+
     /**
      * @return string
      */

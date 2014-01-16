@@ -152,9 +152,11 @@ abstract class BaseQuerySet implements \Countable, \Iterator
      */
     public function cached()
     {
-        foreach ($this as $i => $row) {
-            $this->data[$i] = $row;
-        }
+		if (empty($this->data)) {
+			foreach ($this as $i => $row) {
+				$this->data[$i] = $row;
+			}
+		}
         return $this->data;
     }
 
