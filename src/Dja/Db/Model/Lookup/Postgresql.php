@@ -28,6 +28,7 @@ class Postgresql extends LookupAbstract
         'endswith' => 'LIKE BINARY %s',
         'istartswith' => 'LIKE %s',
         'iendswith' => 'LIKE %s',
+        'raw' => '%s',
     );
 
     protected function udtNameToFieldType($v)

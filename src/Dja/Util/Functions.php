@@ -6,22 +6,56 @@
  */
 
 /**
+ * @param $value
+ * @param null $default
+ * @return null
+ */
+function ifsetor(&$value, $default = null) {
+    return isset($value) ? $value : $default;
+}
+
+/**
+ * @param $tpl
+ * @param $arguments
+ * @return string
+ */
+function fs($tpl, $arguments)
+{
+    if (func_num_args() === 2 && is_array($arguments)) { // named args
+        $args = $arguments;
+        foreach ($args as $key => $value) {
+            if (is_int($key)) {
+                $tpl = substr_replace($tpl, $value, strpos($tpl, '%s'), 2);
+            } else {
+                $tpl = str_replace("%({$key})", $value, $tpl);
+            }
+        }
+        return $tpl;
+    } else {
+        $args = func_get_args();
+        $tpl = array_shift($args);
+        return vsprintf($tpl, $args);
+    }
+}
+
+/**
  * @param array $array1
  * @param array $array2
  * @return array
  */
-function array_diff_assoc_recursive($array1, $array2) {
-    $difference=array();
-    foreach($array1 as $key => $value) {
-        if( is_array($value) ) {
-            if( !isset($array2[$key]) || !is_array($array2[$key]) ) {
+function array_diff_assoc_recursive($array1, $array2)
+{
+    $difference = array();
+    foreach ($array1 as $key => $value) {
+        if (is_array($value)) {
+            if (!isset($array2[$key]) || !is_array($array2[$key])) {
                 $difference[$key] = $value;
             } else {
                 $new_diff = array_diff_assoc_recursive($value, $array2[$key]);
-                if( !empty($new_diff) )
+                if (!empty($new_diff))
                     $difference[$key] = $new_diff;
             }
-        } else if( !array_key_exists($key,$array2) || $array2[$key] !== $value ) {
+        } else if (!array_key_exists($key, $array2) || $array2[$key] !== $value) {
             $difference[$key] = $value;
         }
     }

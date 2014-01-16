@@ -7,6 +7,8 @@
 
 namespace Dja\Db\Model\Field;
 
+use Dja\Db\Model\Model;
+
 /**
  * Class ForeignKey
  * @package Dja\Db\Model\Field
@@ -63,13 +65,17 @@ class ForeignKey extends Relation implements SingleRelation
      */
     public function viewValue($model)
     {
-        if (method_exists($model, '__toString')) {
-            return strval($model);
+        if (is_object($model)) {
+            if (method_exists($model, '__toString')) {
+                return strval($model);
+            }
+            if (isset($model->name)) {
+                return $model->name;
+            }
+            return $model->pk;
+        } else {
+            return $model;
         }
-        if (isset($model->name)) {
-            return $model->name;
-        }
-        return $model->pk;
     }
 
     /**
@@ -102,10 +108,11 @@ class ForeignKey extends Relation implements SingleRelation
      */
     public function dbPrepValue($value)
     {
-        if (is_object($value)) {
+        if ($value instanceof Model) {
             return intval($value->__get($this->to_field));
         } else {
-            return intval($value);
+            //return intval($value);
+            return $value;
         }
     }
 

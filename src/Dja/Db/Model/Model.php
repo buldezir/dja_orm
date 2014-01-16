@@ -2,6 +2,7 @@
 
 namespace Dja\Db\Model;
 
+use Dja\Db\Model\Query\QuerySet;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\EventDispatcher\GenericEvent as Event;
 
@@ -82,12 +83,12 @@ abstract class Model implements \ArrayAccess
      * new queryset
      * an iterator represents db rows
      * @param bool $biiig
-     * @return Query
+     * @return QuerySet
      */
     public static function objects($biiig = false)
     {
         if (false === $biiig) {
-            return new Query(static::metadata());
+            return new QuerySet(static::metadata());
         } else {
             return new RowsetQuery(static::metadata());
         }
@@ -147,6 +148,8 @@ abstract class Model implements \ArrayAccess
         $this->isNewRecord = $isNewRecord;
         $this->metadata = static::metadata();
         if ($isNewRecord) {
+            // set default data if new record
+            $this->setupDefaultValues();
             $this->setFromArray($data);
         } else {
             $this->hydrate($data, $fastRawSet);
@@ -167,36 +170,23 @@ abstract class Model implements \ArrayAccess
         if ($this->hydrated) {
             return $this;
         }
-        //dump($rawData);
-        $relData = [];
         foreach ($rawData as $key => $value) {
             if (strpos($key, '__') !== false) {
                 //list($relKey, $relCol) = explode('__', $key);
                 $tmp = explode('__', $key);
                 $relKey = array_shift($tmp);
-                $relData[$relKey][implode('__', $tmp)] = $value;
+                $this->relationDataCache[$relKey][implode('__', $tmp)] = $value;
             } else {
                 // todo: think about workaround, because method_exists give biiig cpu overhead
-                // local:
-//                $setter = 'set' . $this->transformVarName($key);
-//                if (method_exists($this, $setter)) {
-//                    $this->$setter($value);
-//                } else {
-//                    $this->_set($key, $value, true);
-//                }
                 if ($fastRawSet) {
                     $this->data[$key] = $value;
                 } else {
-                    $this->_set($key, $value, true);
-                }
-            }
-        }
-        foreach ($relData as $rel => $data) {
-            $field = $this->metadata->getField($rel);
-            if ($field->isRelation()) {
-                if ($this->_get($field->db_column)) {
-                    $relClass = $field->relationClass;
-                    $this->relationDataCache[$rel] = new $relClass($data, false, $fastRawSet);
+                    $setter = 'set' . $this->transformVarName($key);
+                    if (method_exists($this, $setter)) {
+                        $this->$setter($value);
+                    } else {
+                        $this->_set($key, $value, true);
+                    }
                 }
             }
         }
@@ -206,19 +196,48 @@ abstract class Model implements \ArrayAccess
     }
 
     /**
+     * @param Field\Relation $field
+     * @return Model
+     */
+    protected function getLazyRelation(\Dja\Db\Model\Field\Relation $field)
+    {
+        $name = $field->name;
+        if (!array_key_exists($name, $this->relationDataCache)) {
+            /** @var Field\ForeignKey $field */
+            $this->relationDataCache[$name] = $field->getRelation($this);
+        } elseif (is_array($this->relationDataCache[$name])) {
+            $relClass = $field->relationClass;
+            $this->relationDataCache[$name] = new $relClass($this->relationDataCache[$name], false);
+        }
+        return $this->relationDataCache[$name];
+    }
+
+    /**
      * dispatch global and local model events
+     * no event objects created if no listeners attached
+     * return false if some event stop propagation (means u need to cancel dependent actions)
      * @param string $eventName
-     * @return Event
+     * @return bool
      */
     protected function eventDispatch($eventName)
     {
-        $e = new Event($this);
-        Model::events()->dispatch($eventName, $e);
-        if ($e->isPropagationStopped()) {
-            return $e;
+        if (Model::events()->hasListeners($eventName)) {
+            $e = new Event($this);
+            Model::events()->dispatch($eventName, $e);
+            if ($e->isPropagationStopped()) {
+                return false;
+            }
         }
-        $this->metadata->events()->dispatch($eventName, $e);
-        return $e;
+        if ($this->metadata->events()->hasListeners($eventName)) {
+            if (!isset($e)) {
+                $e = new Event($this);
+            }
+            $this->metadata->events()->dispatch($eventName, $e);
+            if ($e->isPropagationStopped()) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
@@ -226,7 +245,7 @@ abstract class Model implements \ArrayAccess
      * @param bool $force force default even if value exists
      * @return $this
      */
-    protected function setDefaultValues($force = false)
+    protected function setupDefaultValues($force = false)
     {
         foreach ($this->metadata->getLocalFields() as $field) {
             if ($field->default !== null) {
@@ -285,17 +304,15 @@ abstract class Model implements \ArrayAccess
      */
     public function save()
     {
-        if (!$this->eventDispatch(self::EVENT_BEFORE_SAVE)->isPropagationStopped()) {
+        if ($this->eventDispatch(self::EVENT_BEFORE_SAVE)) {
             if ($this->isNewRecord) {
-                // set default data if saving new record
-                $this->setDefaultValues();
-                $newPK = static::objects()->insert($this);
+                $newPK = static::objects()->doInsert($this->toArray());
                 $this->data[$this->metadata->pk->db_column] = $newPK;
             } else {
                 $updData = $this->getChangedValues();
                 //unset($updData[$this->metadata->pk->db_column]);
                 if (count($updData) > 0) {
-                    static::objects()->filter(['pk' => $this->pk])->update($updData);
+                    static::objects()->filter(['pk' => $this->pk])->doUpdate($updData);
                 }
             }
             $this->eventDispatch(self::EVENT_AFTER_SAVE);
@@ -309,9 +326,34 @@ abstract class Model implements \ArrayAccess
      */
     public function delete()
     {
-        if (!$this->eventDispatch(self::EVENT_BEFORE_DELETE)->isPropagationStopped()) {
-            static::objects()->filter(['pk' => $this->pk])->delete();
+        if ($this->eventDispatch(self::EVENT_BEFORE_DELETE)) {
+            static::objects()->filter(['pk' => $this->pk])->doDelete();
             $this->eventDispatch(self::EVENT_AFTER_DELETE);
+        }
+    }
+
+    /**
+     * @return array
+     */
+    public function getChangedValues()
+    {
+        return array_udiff_assoc($this->data, $this->cleanData, function ($a, $b) {
+            if ($a === $b) {
+                return 0;
+            } else return 1;
+        });
+    }
+
+    /**
+     * @param null $name
+     * @return bool
+     */
+    public function hasChanges($name = null)
+    {
+        if ($name) {
+            return (isset($this->data[$name]) && isset($this->cleanData[$name]) && $this->data[$name] !== $this->cleanData[$name]);
+        } else {
+            return count($this->getChangedValues()) > 0;
         }
     }
 
@@ -321,14 +363,7 @@ abstract class Model implements \ArrayAccess
     public function reset()
     {
         $this->data = $this->cleanData;
-    }
-
-    /**
-     * @return array
-     */
-    public function getChangedValues()
-    {
-        return array_udiff_assoc($this->data, $this->cleanData, function($a, $b){ if ($a === $b) { return 0; } else return 1; });
+        $this->relationDataCache = [];
     }
 
     /**
@@ -341,7 +376,7 @@ abstract class Model implements \ArrayAccess
             throw new \Exception('Cant refresh not stored object');
         }
         $values = static::objects()->filter('pk', $this->pk)->values();
-        $this->setFromArray($values);
+        $this->setFromArray(current($values));
         $this->cleanData = $this->data;
     }
 
@@ -353,16 +388,12 @@ abstract class Model implements \ArrayAccess
     {
         $field = $this->metadata->getField($name);
         if ($this->metadata->isLocal($name)) {
-            return $this->data[$name];
+            return isset($this->data[$name]) ? $this->data[$name] : null;
         } elseif ($this->metadata->isVirtual($name)) {
             if ($field->isRelation()) {
-                if (!isset($this->relationDataCache[$name])) {
-                    /** @var Field\ForeignKey $field */
-                    $this->relationDataCache[$name] = $field->getRelation($this);
-                }
-                return $this->relationDataCache[$name];
+                return $this->getLazyRelation($name);
             } else {
-                return $this->data[$field->db_column];
+                return isset($this->data[$field->db_column]) ? $this->data[$field->db_column] : null;
             }
         }
     }
@@ -459,7 +490,7 @@ abstract class Model implements \ArrayAccess
             if ($field->isRelation()) {
                 if ($depth > 1) {
                     if (isset($this->relationDataCache[$k])) {
-                        $result[$k] = $this->relationDataCache[$k]->toArray($depth - 1);
+                        $result[$k] = $this->getLazyRelation($field)->toArray($depth - 1);
                     } else {
                         $result[$k] = $this->data[$field->db_column];
                     }
@@ -567,6 +598,14 @@ abstract class Model implements \ArrayAccess
      *  for overriding
      */
     protected function init()
+    {
+    }
+
+    /**
+     *  for overriding
+     *  called once when initing metadata
+     */
+    public static function initOnce()
     {
     }
 }

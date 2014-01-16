@@ -55,8 +55,9 @@ class Metadata
     {
         if (!isset(self::$instances[$modelClass])) {
             self::$instances[$modelClass] = new self($modelClass);
-            // workaround to avoid endless cycle when this field init remote field, and remote field this model metadata before __construct ends
+            // workaround to avoid endless cycle when this field init remote field, and remote field use this model metadata before __construct ends
             self::$instances[$modelClass]->initFields();
+            $modelClass::initOnce();
         }
         return self::$instances[$modelClass];
     }
@@ -278,6 +279,14 @@ class Metadata
     public function __isset($key)
     {
         return array_key_exists($key, $this->_allFields);
+    }
+
+    /**
+     * @return int
+     */
+    public function countLocalFields()
+    {
+        return count($this->_localFields);
     }
 
     /**

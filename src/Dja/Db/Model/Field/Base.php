@@ -55,6 +55,9 @@ class Base
      */
     protected $metadata;
 
+    /**
+     * @var array
+     */
     protected $validators = [];
 
     /**

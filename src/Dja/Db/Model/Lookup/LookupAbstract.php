@@ -49,7 +49,7 @@ abstract class LookupAbstract
      */
     public function getLookup($op, $escapedField, $rawValue, $negate = false)
     {
-        if (!isset($this->operators[$op])) {
+        if (!$this->issetLookup($op)) {
             throw new \Exception("unsupported operator '{$op}'");
         }
         switch ($op) {
@@ -79,6 +79,10 @@ abstract class LookupAbstract
             case 'iexact':
                 $escapedField = 'lower('.$escapedField.')';
                 $rawValue = strtolower($rawValue);
+                break;
+            case 'raw':
+                $rawValue = sprintf($rawValue, $escapedField);
+                $escapedField = '';
                 break;
             default:
                 break;
