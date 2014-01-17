@@ -7,27 +7,31 @@
 
 namespace Dja\Db\Model\Query;
 
+use Dja\Db\Model\Metadata;
+use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\Query\QueryBuilder;
+
+/**
+ * Class ValuesQuerySet
+ * @package Dja\Db\Model\Query
+ */
 class ValuesQuerySet extends BaseQuerySet
 {
-	/**
-     * @var array
+    /**
+     * @var array|null
      */
-    protected $selectFields = [];
+    protected $selectFields;
 
-	/**
+    /**
      * @param Metadata $metadata
      * @param QueryBuilder $qb
      * @param Connection $db
-     * @param string $selectKeyField
-     * @param string $selectValueField
+     * @param array $fields
      */
     public function __construct(Metadata $metadata, QueryBuilder $qb = null, Connection $db = null, array $fields = null)
     {
         parent::__construct($metadata, $qb, $db);
-        
-		if (null === $fields) {
-			
-		}
+        $this->selectFields = $fields;
     }
 
     /**
@@ -43,15 +47,27 @@ class ValuesQuerySet extends BaseQuerySet
             foreach ($this->joinMap as $joinData) {
                 $this->qb->leftJoin($this->qi($joinData['selfAlias']), $this->qi($joinData['joinTable']), $this->qi($joinData['joinAlias']), $joinData['on']);
             }
-            foreach ($this->metadata->getDbColNames() as $lCol) {
-                $this->qb->addSelect('t.' . $lCol);
-                $dataMapping[] = $lCol;
-            }
-            foreach ($this->joinMap as $row) {
-                foreach ($row['columns'] as $selectF => $selectA) {
-                    $this->qb->addSelect($selectF);
-                    $dataMapping[] = $selectA;
+            if (null === $this->selectFields) {
+                foreach ($this->metadata->getDbColNames() as $lCol) {
+                    $this->qb->addSelect('t.' . $lCol);
+                    $dataMapping[] = $lCol;
                 }
+                foreach ($this->relatedSelectCols as $underscoreName => $selectAlias) {
+                    $this->qb->addSelect($selectAlias);
+                    $dataMapping[] = $underscoreName;
+                }
+            } else {
+                foreach ($this->selectFields as $underscoreName) {
+                    $selectField = $this->findLookUpField($this->metadata, explode('__', $underscoreName));
+                    if (isset($this->relatedSelectCols[$underscoreName])) {
+                        $this->qb->addSelect($this->relatedSelectCols[$underscoreName]);
+                        $dataMapping[] = $underscoreName;
+                    } else {
+                        $this->qb->addSelect('t.' . $selectField->db_column);
+                        $dataMapping[] = $selectField->db_column;
+                    }
+                }
+
             }
             $this->rowDataMapper = function ($row) use ($dataMapping) {
                 return array_combine($dataMapping, $row);

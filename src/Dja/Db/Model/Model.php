@@ -175,6 +175,10 @@ abstract class Model implements \ArrayAccess
                 //list($relKey, $relCol) = explode('__', $key);
                 $tmp = explode('__', $key);
                 $relKey = array_shift($tmp);
+                // todo: may be check for valid rel data
+                /*if ($this->metadata->canBeHydrated($relKey)) {
+                    $this->relationDataCache[$relKey][implode('__', $tmp)] = $value;
+                }*/
                 $this->relationDataCache[$relKey][implode('__', $tmp)] = $value;
             } else {
                 // todo: think about workaround, because method_exists give biiig cpu overhead

@@ -72,13 +72,14 @@ class Introspection
      */
     public function processQueueCallback(\Closure $callBack)
     {
-        while(count($this->generateQueue)) {
+        while (count($this->generateQueue)) {
             $tbl = array_shift($this->generateQueue);
             if (!isset($this->generated[$tbl])) {
                 try {
                     $code = $this->generateClassForTable($tbl);
                     $callBack($tbl, $this->table2model($tbl), $code);
-                } catch (\Exception $e){}
+                } catch (\Exception $e) {
+                }
                 $this->generated[$tbl] = $tbl;
             }
         }
@@ -95,7 +96,8 @@ class Introspection
             try {
                 $code = $this->generateClassForTable($tbl);
                 $callBack($tbl, $this->table2model($tbl), $code);
-            } catch (\Exception $e){}
+            } catch (\Exception $e) {
+            }
         }
     }
 
@@ -106,19 +108,22 @@ class Introspection
     public function generateClassForTable($tableName)
     {
         $table = $this->db->getSchemaManager()->listTableDetails($tableName);
-        //echo '<pre>'; print_r($tInfo);
-        $sqls = $this->db->getDatabasePlatform()->getCreateTableSQL($table);
-        //dump($sqls);
+        //$sqls = $this->db->getDatabasePlatform()->getCreateTableSQL($table);
+
+        $colConfArray = [];
 
         $code = 'class ' . $this->table2model($table->getName()) . ' extends Dja\Db\Model\Model' . PHP_EOL;
         $code .= '{' . PHP_EOL;
         $code .= '    protected static $dbtable = \'' . $table->getName() . '\';' . PHP_EOL;
         $code .= '    protected static $fields = [' . PHP_EOL;
         foreach ($table->getColumns() as $col) {
-            $code .= '    ' . $this->colConfig($col) . PHP_EOL;
+            $colConfArray[] = $colConf = $this->colConfig($col);
+            $code .= '    ' . $this->colConfigDump($colConf) . PHP_EOL;
         }
         $code .= '    ];' . PHP_EOL;
         $code .= '}' . PHP_EOL;
+
+        $code = $this->classDoc($table, $colConfArray) . PHP_EOL . $code;
 
         return $code;
     }
@@ -135,9 +140,28 @@ class Introspection
         return $this->prefix . implode('', $a) . $this->postfix;
     }
 
+    protected function classDoc(Table $table, array $colConfArray)
+    {
+        $s = '/**' . PHP_EOL;
+        foreach ($colConfArray as $v) {
+            $s .= ' * @property mixed $' . $v[0] . PHP_EOL;
+        }
+        $s .= ' */';
+        return $s;
+    }
+
+    /**
+     * @param array $colConf
+     * @return string
+     */
+    protected function colConfigDump(array $colConf)
+    {
+        return '    \'' . $colConf[0] . '\' => [' . $this->dumpArray($colConf[1]) . '],';
+    }
+
     /**
      * @param Column $col
-     * @return string
+     * @return array
      */
     protected function colConfig(Column $col)
     {
@@ -182,7 +206,7 @@ class Introspection
             }
             $conf['help_text'] = $help;
         }
-        return '    \'' . $fieldName . '\' => [' . $this->dumpArray($conf) . '],';
+        return [$fieldName, $conf];
     }
 
     /**

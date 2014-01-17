@@ -11,23 +11,16 @@ use Dja\Db\Model\Metadata;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Query\QueryBuilder;
 
-abstract class BaseQuerySet implements \Countable, \Iterator
+/**
+ * Class BaseQuerySet
+ * @package Dja\Db\Model\Query
+ */
+abstract class BaseQuerySet extends DataIterator
 {
     /**
      * @var Metadata
      */
     protected $metadata;
-
-    /**
-     * cache
-     * @var string
-     */
-    protected $modelClassName;
-
-    /**
-     * @var \Doctrine\DBAL\Connection
-     */
-    protected $db;
 
     /**
      * @var \Doctrine\DBAL\Query\QueryBuilder
@@ -38,31 +31,6 @@ abstract class BaseQuerySet implements \Countable, \Iterator
      * @var \Dja\Db\Model\Lookup\LookupAbstract
      */
     protected $lookuper;
-
-    /**
-     * @var \Doctrine\DBAL\Statement
-     */
-    protected $currentStatement;
-
-    /**
-     * @var string
-     */
-    protected $table;
-
-    /**
-     * @var array
-     */
-    protected $methodCalls = [];
-
-    /**
-     * @var array
-     */
-    protected $data = [];
-
-    /**
-     * @var int
-     */
-    protected $rowCount = 0;
 
     /**
      * @var int
@@ -84,26 +52,6 @@ abstract class BaseQuerySet implements \Countable, \Iterator
      */
     protected $relatedSelectFields = [];
 
-    /**
-     * @var string
-     */
-    protected $queryStringCache;
-
-    /**
-     * @var \Closure
-     */
-    protected $rowDataMapper;
-
-    /**
-     * @var array
-     */
-    protected $currentFetchedRow = [];
-
-    /**
-     * @var int
-     */
-    protected $internalPointer = 0;
-
 
     /**
      * @param Metadata $metadata
@@ -113,8 +61,6 @@ abstract class BaseQuerySet implements \Countable, \Iterator
     public function __construct(Metadata $metadata, QueryBuilder $qb = null, Connection $db = null)
     {
         $this->metadata = $metadata;
-        $this->modelClassName = $metadata->getModelClass();
-        $this->table = $metadata->getDbTableName();
         if (null !== $db) {
             $this->db = $db;
         } else {
@@ -123,17 +69,9 @@ abstract class BaseQuerySet implements \Countable, \Iterator
         if (null !== $qb) {
             $this->qb = $qb;
         } else {
-            $this->qb = $this->db->createQueryBuilder()->from($this->qi($this->table), $this->qi('t'));
+            $this->qb = $this->db->createQueryBuilder()->from($this->qi($metadata->getDbTableName()), $this->qi('t'));
         }
         $this->lookuper = \Dja\Db\Model\Lookup\LookupAbstract::factory($this->db);
-    }
-
-    /**
-     * @return string
-     */
-    public function __toString()
-    {
-        return $this->buildQuery();
     }
 
     /**
@@ -144,20 +82,6 @@ abstract class BaseQuerySet implements \Countable, \Iterator
         $this->qb = clone $this->qb;
         $this->queryStringCache = null;
         $this->currentStatement = null;
-    }
-
-    /**
-     * fetches all rows and stores them in array
-     * @return array
-     */
-    public function cached()
-    {
-		if (empty($this->data)) {
-			foreach ($this as $i => $row) {
-				$this->data[$i] = $row;
-			}
-		}
-        return $this->data;
     }
 
     ####################################################################################
@@ -295,19 +219,7 @@ abstract class BaseQuerySet implements \Countable, \Iterator
         return $result;
     }
 
-    protected function execute()
-    {
-        if ($this->currentStatement === null) {
-            $this->currentStatement = $this->db->query($this->buildQuery());
-            $this->rowCount = $this->currentStatement->rowCount();
-        }
-        return $this->currentStatement;
-    }
-
-    /**
-     * @return string
-     */
-    abstract protected function buildQuery();
+    ####################################################################################
 
     /**
      * setup select columns and
@@ -363,8 +275,8 @@ abstract class BaseQuerySet implements \Countable, \Iterator
         $this->relatedSelectCols = [];
 
         foreach ($this->joinMap as $row) {
-            foreach ($row['columns'] as $selectF => $selectA) {
-                $this->relatedSelectCols[$selectA] = $selectF;
+            foreach ($row['columns'] as $selectAlias => $underscoreName) {
+                $this->relatedSelectCols[$underscoreName] = $selectAlias;
             }
         }
     }
@@ -376,7 +288,6 @@ abstract class BaseQuerySet implements \Countable, \Iterator
      * @param array $arguments
      * @param bool $negate
      * @return array
-     * @throws \Exception
      */
     protected function explaneArguments(array $arguments, $negate = false)
     {
@@ -421,7 +332,7 @@ abstract class BaseQuerySet implements \Countable, \Iterator
         } else {
             $db_column_a = implode('__', $lookupArr);
             if (!isset($this->relatedSelectCols[$db_column_a])) {
-                throw new \Exception('Cant lookup for related field without selectRelated()');
+                throw new \DomainException("Cant lookup for related field '{$db_column_a}' without selectRelated()");
             }
             return [$field, $lookupType, $this->relatedSelectCols[$db_column_a]];
         }
@@ -443,58 +354,21 @@ abstract class BaseQuerySet implements \Countable, \Iterator
         return $field;
     }
 
-    /**
-     * alias for $this->db->quoteIdentifier
-     * @param $v
-     * @return string
-     */
-    protected function qi($v)
-    {
-        return $this->db->quoteIdentifier($v);
-    }
+    ####################################################################################
 
     /**
-     * logs parent method call with arguments so later we can repeat this calls in new object
+     * @return $this
      */
-    protected function logMethodArguments()
+    protected function resetStatement()
     {
-        if (null !== $this->queryStringCache) {
-            // if trying to use methods that modify query after execution
-            throw new \LogicException('Cannot filter a query once executed');
-        }
-        $trace = debug_backtrace(null, 2);
-        $trace = $trace[1];
-        $key = $trace['function'];
-        $pre_arguments = $trace['args'];
-        if (!isset($this->methodCalls[$key])) {
-            $this->methodCalls[$key] = [];
-        }
-        $arguments = [];
-        foreach ($pre_arguments as $arg) {
-            $arguments[] = $arg;
-        }
-        $this->methodCalls[$key][] = $arguments;
+        parent::resetStatement();
+        $this->queryStringCache = null;
+        return $this;
     }
 
     public function _qb()
     {
         return $this->qb;
-    }
-
-    /**
-     * @param array $data
-     * @return $this
-     */
-    public function importMethodCalls(array $data)
-    {
-        foreach ($data as $k => $v) {
-            if (method_exists($this, $k)) {
-                foreach ($v as $argsArr) {
-                    call_user_func_array([$this, $k], $argsArr);
-                }
-            }
-        }
-        return $this;
     }
 
     /**
@@ -515,66 +389,9 @@ abstract class BaseQuerySet implements \Countable, \Iterator
     public function _setJoinDepth($value)
     {
         if ($value < $this->joinMaxDepth) {
-            throw new \LogicException('Cannot decrement join depth');
+            throw new \InvalidArgumentException("Cannot decrement join depth. current={$this->joinMaxDepth}.");
         }
         $this->joinMaxDepth = $value;
         $this->buildJoinMap();
-    }
-
-    /**
-     * @return mixed|null
-     */
-    public function current()
-    {
-        $this->currentFetchedRow = $this->execute()->fetch(\PDO::FETCH_NUM);
-        if (false === $this->currentFetchedRow) {
-            return null;
-        } else {
-            $mapper = $this->rowDataMapper;
-            return $mapper($this->currentFetchedRow);
-        }
-    }
-
-    /**
-     * ++
-     */
-    public function next()
-    {
-        $this->internalPointer++;
-    }
-
-    /**
-     * @return int|mixed
-     */
-    public function key()
-    {
-        return $this->internalPointer;
-    }
-
-    /**
-     * @return bool
-     */
-    public function valid()
-    {
-        return $this->internalPointer < $this->rowCount;
-    }
-
-    /**
-     * start new iteration
-     */
-    public function rewind()
-    {
-        $this->internalPointer = 0;
-        $this->currentStatement = null;
-        $this->execute();
-    }
-
-    /**
-     * @return int
-     */
-    public function count()
-    {
-        $this->execute();
-        return $this->rowCount;
     }
 }

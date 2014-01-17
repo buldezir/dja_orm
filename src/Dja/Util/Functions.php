@@ -5,6 +5,22 @@
  * Time: 15:35
  */
 
+function chunkedIterator(\Dja\Db\Model\Query\BaseQuerySet $qs, $chunkSize = 1000)
+{
+    $qs = clone $qs;
+    $baseLimit = $qs->_qb()->getMaxResults();
+    $allCount = $qs->doCount();
+    $expectingResultsCount = $baseLimit !== null ? min($baseLimit, $allCount) : $allCount;
+    $numIters = ceil($expectingResultsCount / $chunkSize);
+    foreach (range(0, $numIters - 1) as $offsetMultiplier) {
+        $offset = $offsetMultiplier * $chunkSize;
+        $qs->_qb()->setFirstResult($offset)->setMaxResults($chunkSize);
+        foreach ($qs as $row) {
+            yield $row;
+        }
+    }
+}
+
 /**
  * @param $value
  * @param null $default
@@ -194,11 +210,11 @@ function pr()
     $vars = func_get_args();
     foreach ($vars as $v) {
         if (is_string($v)) {
-            $s[] = '<p>' . $v . '</p>';
+            $s[] = '<pre>' . $v . '</pre>';
         } else {
             ob_start();
             var_export($v);
-            $s[] = '<p>' . ob_get_clean() . '</p>';
+            $s[] = '<pre>' . ob_get_clean() . '</pre>';
         }
     }
     echo implode(PHP_EOL, $s) . PHP_EOL;

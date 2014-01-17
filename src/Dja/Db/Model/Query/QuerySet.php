@@ -7,14 +7,19 @@
 
 namespace Dja\Db\Model\Query;
 
+/**
+ * Class QuerySet
+ * @package Dja\Db\Model\Query
+ */
 class QuerySet extends BaseQuerySet
 {
     /**
+     * @param array $fields
      * @return ValuesQuerySet
      */
     public function values(array $fields = null)
     {
-        $qs = new ValuesQuerySet($this->metadata, $this->qb, $this->db);
+        $qs = new ValuesQuerySet($this->metadata, $this->qb, $this->db, $fields);
         if ($this->joinMaxDepth) {
             $qs->_setJoinDepth($this->joinMaxDepth);
         } elseif (!empty($this->relatedSelectFields)) {
@@ -56,13 +61,11 @@ class QuerySet extends BaseQuerySet
                 $this->qb->addSelect('t.' . $lCol);
                 $dataMapping[] = $lCol;
             }
-            foreach ($this->joinMap as $row) {
-                foreach ($row['columns'] as $selectF => $selectA) {
-                    $this->qb->addSelect($selectF);
-                    $dataMapping[] = $selectA;
-                }
+            foreach ($this->relatedSelectCols as $underscoreName => $selectAlias) {
+                $this->qb->addSelect($selectAlias);
+                $dataMapping[] = $underscoreName;
             }
-            $cls = $this->modelClassName;
+            $cls = $this->metadata->getModelClass();
             $this->rowDataMapper = function ($row) use ($cls, $dataMapping) {
                 return new $cls(array_combine($dataMapping, $row), false);
             };

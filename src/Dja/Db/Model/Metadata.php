@@ -379,6 +379,20 @@ class Metadata
     }
 
     /**
+     * @param $name
+     * @return bool
+     */
+    public function canBeHydrated($name)
+    {
+        if (isset($this->_allFields[$name])) {
+            if ($this->_allFields[$name]->isRelation() && $this->_allFields[$name]->canAutoJoin()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * @return array
      */
     public function getDbColNames()

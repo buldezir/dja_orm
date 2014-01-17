@@ -11,6 +11,10 @@ use Dja\Db\Model\Metadata;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Query\QueryBuilder;
 
+/**
+ * Class ValuesListQuerySet
+ * @package Dja\Db\Model\Query
+ */
 class ValuesListQuerySet extends ValuesQuerySet
 {
     /**

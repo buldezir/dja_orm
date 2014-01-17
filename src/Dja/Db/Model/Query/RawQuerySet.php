@@ -7,149 +7,109 @@
 
 namespace Dja\Db\Model\Query;
 
-class RawQuerySet implements \Countable, \Iterator
+use Dja\Db\Model\Metadata;
+use Doctrine\DBAL\Connection;
+
+/**
+ * Class RawQuerySet
+ * @package Dja\Db\Model\Query
+ */
+class RawQuerySet extends DataIterator
 {
-	/**
+    /**
      * @var Metadata
      */
     protected $metadata;
 
     /**
-     * cache
-     * @var string
-     */
-    protected $modelClassName;
-
-    /**
-     * @var \Doctrine\DBAL\Connection
-     */
-    protected $db;
-	
-	/**
-     * @var \Doctrine\DBAL\Statement
-     */
-    protected $currentStatement;
-	
-	/**
-     * @var string
-     */
-    protected $table;
-	
-	/**
-     * @var array
-     */
-    protected $data = [];
-
-    /**
      * @var int
      */
-    protected $rowCount = 0;
-	
-	/**
-     * @var array
-     */
-    protected $currentFetchedRow = [];
+    protected $fetchType = \PDO::FETCH_ASSOC;
 
     /**
-     * @var int
+     * @param Metadata $metadata
+     * @param $query
+     * @param Connection $db
      */
-    protected $internalPointer = 0;
-	
-	/**
-     * @var string
-     */
-    protected $queryStringCache;
-
-	public function __construct(Metadata $metadata, $query, Connection $db = null)
+    public function __construct(Metadata $metadata, $query, Connection $db = null)
     {
-		$this->metadata = $metadata;
-        $this->modelClassName = $metadata->getModelClass();
-        $this->table = $metadata->getDbTableName();
+        $this->metadata = $metadata;
         if (null !== $db) {
             $this->db = $db;
         } else {
             $this->db = $metadata->getDbConnection();
         }
-		$this->queryStringCache = $query;
-	}
-	
-	/**
-     * fetches all rows and stores them in array
-     * @return array
-     */
-    public function cached()
-    {
-		if (empty($this->data)) {
-			foreach ($this as $i => $row) {
-				$this->data[$i] = $row;
-			}
-		}
-        return $this->data;
-    }
-	
-	protected function execute()
-    {
-        if ($this->currentStatement === null) {
-            $this->currentStatement = $this->db->query($this->queryStringCache);
-            $this->rowCount = $this->currentStatement->rowCount();
-        }
-        return $this->currentStatement;
-    }
-	
-	/**
-     * @return mixed|null
-     */
-    public function current()
-    {
-        $this->currentFetchedRow = $this->execute()->fetch(\PDO::FETCH_ASSOC);
-        if (false === $this->currentFetchedRow) {
-            return null;
-        } else {
-            $mapper = $this->rowDataMapper;
-            return $mapper($this->currentFetchedRow);
-        }
+        $this->queryStringCache = str_replace([
+            ':t',
+            ':pk',
+        ], [
+            $this->qi($this->metadata->getDbTableName()),
+            $this->qi($this->metadata->getPrimaryKey()),
+        ], $query);
+
+        $this->returnObjects();
     }
 
     /**
-     * ++
+     * @return $this
      */
-    public function next()
+    public function returnObjects()
     {
-        $this->internalPointer++;
+        $cls = $this->metadata->getModelClass();
+        $this->rowDataMapper = function ($row) use ($cls) {
+            return new $cls($row, false);
+        };
+        return $this;
     }
 
     /**
-     * @return int|mixed
+     * @return $this
      */
-    public function key()
+    public function returnValues()
     {
-        return $this->internalPointer;
+        $this->rowDataMapper = function (&$row) {
+            return $row;
+        };
+        return $this;
     }
 
     /**
-     * @return bool
+     * @return mixed|string
      */
-    public function valid()
+    protected function buildQuery()
     {
-        return $this->internalPointer < $this->rowCount;
+        return $this->queryStringCache;
     }
 
-    /**
-     * start new iteration
-     */
-    public function rewind()
+    ##############################################################################################################
+
+    public function selectRelated(array $arguments)
     {
-        $this->internalPointer = 0;
-        $this->currentStatement = null;
-        $this->execute();
+        throw new \BadMethodCallException('Cannot use '.__METHOD__.' for raw querySet');
     }
 
-    /**
-     * @return int
-     */
-    public function count()
+    public function exclude(array $arguments)
     {
-        $this->execute();
-        return $this->rowCount;
+        throw new \BadMethodCallException('Cannot use '.__METHOD__.' for raw querySet');
+    }
+
+    public function filter(array $arguments)
+    {
+        throw new \BadMethodCallException('Cannot use '.__METHOD__.' for raw querySet');
+    }
+
+    public function order(array $arguments)
+    {
+        throw new \BadMethodCallException('Cannot use '.__METHOD__.' for raw querySet');
+    }
+
+    public function limit($limit, $offset = null)
+    {
+        throw new \BadMethodCallException('Cannot use '.__METHOD__.' for raw querySet');
+    }
+
+    public function doCount($distinct = false)
+    {
+        throw new \BadMethodCallException('Cannot use '.__METHOD__.' for raw querySet');
     }
 }
