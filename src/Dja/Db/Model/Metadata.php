@@ -54,7 +54,7 @@ class Metadata
     public static function getInstance($modelClass)
     {
         if (!isset(self::$instances[$modelClass])) {
-            self::$instances[$modelClass] = new self($modelClass);
+            self::$instances[$modelClass] = new static($modelClass);
             // workaround to avoid endless cycle when this field init remote field, and remote field use this model metadata before __construct ends
             self::$instances[$modelClass]->initFields();
             $modelClass::initOnce();
@@ -63,36 +63,15 @@ class Metadata
     }
 
     /**
-     * return manual setted or generate table name
-     * User -> users, UserRole -> user_roles
-     * @return null|string
-     */
-    public function getDbTableName()
-    {
-        if ($this->dbTableName === null) {
-            $parts = preg_split('#[\\-]#', $this->modelClassName);
-            $lastPart = array_pop($parts);
-            $name = $this->camelCaseToUnderscore($lastPart) . 's';
-            $this->dbTableName = $name;
-        }
-        return $this->dbTableName;
-    }
-
-    /**
-     * @param string $value
-     * @return string
-     */
-    public function camelCaseToUnderscore($value)
-    {
-        return strtolower(preg_replace('/([a-z])([A-Z])/', '$1_$2', $value));
-    }
-
-    /**
      * @param $modelClass
+     * @throws \InvalidArgumentException
      */
     public function __construct($modelClass)
     {
         $refl = new \ReflectionClass($modelClass);
+        if ($refl->isAbstract()) {
+            throw new \InvalidArgumentException("Cannot create metadata manager for abstract class '{$modelClass}'");
+        }
         $staticProps = $refl->getStaticProperties();
         $dbTableName = $staticProps['dbtable'];
         $this->fields = $this->collectFieldConfig($refl);
@@ -402,6 +381,31 @@ class Metadata
             $result[] = $fieldObj->db_column;
         }
         return $result;
+    }
+
+    /**
+     * return manual setted or generate table name
+     * User -> users, UserRole -> user_roles
+     * @return null|string
+     */
+    public function getDbTableName()
+    {
+        if ($this->dbTableName === null) {
+            $parts = preg_split('#[\\-]#', $this->modelClassName);
+            $lastPart = array_pop($parts);
+            $name = $this->camelCaseToUnderscore($lastPart) . 's';
+            $this->dbTableName = $name;
+        }
+        return $this->dbTableName;
+    }
+
+    /**
+     * @param string $value
+     * @return string
+     */
+    public function camelCaseToUnderscore($value)
+    {
+        return strtolower(preg_replace('/([a-z])([A-Z])/', '$1_$2', $value));
     }
 
     /**

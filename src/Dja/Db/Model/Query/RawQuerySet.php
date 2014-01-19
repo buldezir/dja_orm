@@ -27,11 +27,17 @@ class RawQuerySet extends DataIterator
     protected $fetchType = \PDO::FETCH_ASSOC;
 
     /**
+     * @var array
+     */
+    protected $bindValues = [];
+
+    /**
      * @param Metadata $metadata
      * @param $query
+     * @param array $bind
      * @param Connection $db
      */
-    public function __construct(Metadata $metadata, $query, Connection $db = null)
+    public function __construct(Metadata $metadata, $query, array $bind = null, Connection $db = null)
     {
         $this->metadata = $metadata;
         if (null !== $db) {
@@ -47,7 +53,20 @@ class RawQuerySet extends DataIterator
             $this->qi($this->metadata->getPrimaryKey()),
         ], $query);
 
+        $this->bind($bind);
         $this->returnObjects();
+    }
+
+    /**
+     * @param array $bind
+     * @return $this
+     */
+    public function bind(array $bind = null)
+    {
+        foreach ($bind as $k => $v) {
+            $this->bindValues[$k] = $v;
+        }
+        return $this;
     }
 
     /**
@@ -81,9 +100,20 @@ class RawQuerySet extends DataIterator
         return $this->queryStringCache;
     }
 
+    protected function execute()
+    {
+        if ($this->currentStatement === null) {
+            $this->currentStatement = $this->db->prepare($this->buildQuery());
+            $this->currentStatement->execute($this->bindValues);
+            $this->rowCount = $this->currentStatement->rowCount();
+        }
+        return $this->currentStatement;
+    }
+
+
     ##############################################################################################################
 
-    public function selectRelated(array $arguments)
+    /*public function selectRelated(array $arguments)
     {
         throw new \BadMethodCallException('Cannot use '.__METHOD__.' for raw querySet');
     }
@@ -111,5 +141,5 @@ class RawQuerySet extends DataIterator
     public function doCount($distinct = false)
     {
         throw new \BadMethodCallException('Cannot use '.__METHOD__.' for raw querySet');
-    }
+    }*/
 }

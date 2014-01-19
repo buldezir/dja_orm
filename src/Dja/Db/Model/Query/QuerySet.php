@@ -14,6 +14,16 @@ namespace Dja\Db\Model\Query;
 class QuerySet extends BaseQuerySet
 {
     /**
+     * @param $sql
+     * @param array $bind
+     * @return RawQuerySet
+     */
+    public function raw($sql, array $bind = null)
+    {
+        return new RawQuerySet($this->metadata, $sql, $bind, $this->db);
+    }
+
+    /**
      * @param array $fields
      * @return ValuesQuerySet
      */

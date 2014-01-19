@@ -2,6 +2,7 @@
 
 namespace Dja\Db\Model;
 
+use Dja\Db\Model\Query\Manager;
 use Dja\Db\Model\Query\QuerySet;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\EventDispatcher\GenericEvent as Event;
@@ -82,16 +83,11 @@ abstract class Model implements \ArrayAccess
     /**
      * new queryset
      * an iterator represents db rows
-     * @param bool $biiig
-     * @return QuerySet
+     * @return Manager
      */
-    public static function objects($biiig = false)
+    public static function objects()
     {
-        if (false === $biiig) {
-            return new QuerySet(static::metadata());
-        } else {
-            return new RowsetQuery(static::metadata());
-        }
+        return Manager::getInstance(get_called_class());
     }
 
     /**

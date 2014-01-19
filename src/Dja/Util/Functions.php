@@ -5,6 +5,11 @@
  * Time: 15:35
  */
 
+/**
+ * @param \Dja\Db\Model\Query\BaseQuerySet $qs
+ * @param int $chunkSize
+ * @return \Iterator
+ */
 function chunkedIterator(\Dja\Db\Model\Query\BaseQuerySet $qs, $chunkSize = 1000)
 {
     $qs = clone $qs;
@@ -199,6 +204,24 @@ function import($path)
 function __()
 {
     return '[reserved for translate]';
+}
+
+/**
+ * @param array $array
+ * @return string
+ */
+function dumpArray(array $array)
+{
+    $a = [];
+    foreach ($array as $k => $v) {
+        $v = var_export($v, 1);
+        if (!is_int($k)) {
+            $a[] = "'$k' => $v";
+        } else {
+            $a[] = $v;
+        }
+    }
+    return implode(', ', $a);
 }
 
 /**

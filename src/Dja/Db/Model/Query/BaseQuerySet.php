@@ -200,7 +200,7 @@ abstract class BaseQuerySet extends DataIterator
 
     /**
      * @param $arguments
-     * @return mixed
+     * @return \Dja\Db\Model\Model
      * @throws \InvalidArgumentException
      * @throws \Exception
      */
