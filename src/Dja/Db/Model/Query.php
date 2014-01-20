@@ -17,7 +17,7 @@ use Doctrine\DBAL\Query\QueryBuilder;
  * Class Query
  * @package Dja\Db\Model
  */
-class Query implements QuerySet
+class Query implements \Countable, \Iterator
 {
     const ORDER_ASCENDING = 'ASC';
     const ORDER_DESCENDING = 'DESC';

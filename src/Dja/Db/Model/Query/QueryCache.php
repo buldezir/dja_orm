@@ -5,7 +5,7 @@
  * Time: 23:01
  */
 
-namespace Dja\Db\Model;
+namespace Dja\Db\Model\Query;
 
 use Doctrine\Common\Cache\Cache;
 use Doctrine\Common\Cache\PhpFileCache;
@@ -24,22 +24,23 @@ class QueryCache implements \Countable, \Iterator
     protected $i = 0;
 
     /**
-     * @param Query $q
+     * @param QuerySet $q
      * @param int $lifeTime
      * @param Cache $cacheBackend
      * @return static
      */
-    public static function get(Query $q, $lifeTime = 3600, Cache $cacheBackend = null)
+    public static function get(QuerySet $q, $lifeTime = 3600, Cache $cacheBackend = null)
     {
         return new static($q, $lifeTime, $cacheBackend);
     }
 
     /**
-     * @param Query $q
+     * @param QuerySet $q
      * @param int $lifeTime
      * @param Cache $cacheBackend
+     * todo: fix for new QuerySet types
      */
-    public function __construct(Query $q, $lifeTime = 3600, Cache $cacheBackend = null)
+    public function __construct(QuerySet $q, $lifeTime = 3600, Cache $cacheBackend = null)
     {
         $this->query = $q;
         if ($cacheBackend) {

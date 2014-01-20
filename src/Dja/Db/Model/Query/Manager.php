@@ -63,6 +63,35 @@ class Manager
     }
 
     /**
+     * @param array $data
+     * @return int
+     */
+    public function doInsert(array $data)
+    {
+
+        return $this->getQuerySet()->doInsert($data);
+    }
+
+    /**
+     * @param array $data
+     * @return int
+     */
+    public function doUpdate(array $data)
+    {
+
+        return $this->getQuerySet()->doUpdate($data);
+    }
+
+    /**
+     * @return int
+     */
+    public function doDelete()
+    {
+
+        return $this->getQuerySet()->doDelete();
+    }
+
+    /**
      * @param int|array $arguments
      * @return \Dja\Db\Model\Model
      */

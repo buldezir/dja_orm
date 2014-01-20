@@ -14,6 +14,51 @@ namespace Dja\Db\Model\Query;
 class QuerySet extends BaseQuerySet
 {
     /**
+     * @param array $data
+     * @return int
+     * @throws \InvalidArgumentException
+     */
+    public function doInsert(array $data)
+    {
+        $dataReady = [];
+        foreach ($data as $key => $value) {
+            $dataReady[$this->qi($key)] = $this->qv($this->metadata->getField($key)->dbPrepValue($value));
+        }
+        $this->db->insert($this->qi($this->table), $dataReady);
+        return $this->db->lastInsertId();
+    }
+
+    /**
+     * @param array $data
+     * @return int
+     * @throws \LogicException
+     */
+    public function doUpdate(array $data)
+    {
+        if (count($this->qb->getQueryPart('where')) === 0) {
+            throw new \LogicException('must be WHERE conditions for update');
+        }
+        $this->qb->update($this->qi($this->table), $this->qi('t'));
+        foreach ($data as $key => $value) {
+            $this->qb->set($this->qi($key), $this->db->quote($this->metadata->getField($key)->dbPrepValue($value)));
+        }
+        return $this->qb->execute();
+    }
+
+    /**
+     * @return int
+     * @throws \LogicException
+     */
+    public function doDelete()
+    {
+        if (count($this->qb->getQueryPart('where')) === 0) {
+            throw new \LogicException('must be WHERE conditions for delete');
+        }
+        $this->qb->delete($this->qi($this->table), $this->qi('t'));
+        return $this->qb->execute();
+    }
+
+    /**
      * @param $sql
      * @param array $bind
      * @return RawQuerySet

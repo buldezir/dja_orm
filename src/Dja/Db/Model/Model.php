@@ -3,7 +3,6 @@
 namespace Dja\Db\Model;
 
 use Dja\Db\Model\Query\Manager;
-use Dja\Db\Model\Query\QuerySet;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\EventDispatcher\GenericEvent as Event;
 
@@ -363,7 +362,7 @@ abstract class Model implements \ArrayAccess
     public function reset()
     {
         $this->data = $this->cleanData;
-        $this->relationDataCache = [];
+        $this->relationDataCache = []; // todo: think about
     }
 
     /**
@@ -375,7 +374,7 @@ abstract class Model implements \ArrayAccess
         if ($this->isNewRecord()) {
             throw new \Exception('Cant refresh not stored object');
         }
-        $values = static::objects()->filter('pk', $this->pk)->values();
+        $values = static::objects()->values()->filter('pk', $this->pk);
         $this->setFromArray(current($values));
         $this->cleanData = $this->data;
     }
@@ -504,6 +503,10 @@ abstract class Model implements \ArrayAccess
         return $result;
     }
 
+    /**
+     * todo: move outside, may be to helper function, or to form methods
+     * @return array
+     */
     public function export()
     {
         $result = [];
