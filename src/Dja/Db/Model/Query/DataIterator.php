@@ -7,6 +7,12 @@
 
 namespace Dja\Db\Model\Query;
 
+/**
+ * just abstraction for avoid duplicate code
+ *
+ * Class DataIterator
+ * @package Dja\Db\Model\Query
+ */
 abstract class DataIterator implements \Countable, \Iterator
 {
     /**

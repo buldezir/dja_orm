@@ -80,8 +80,7 @@ abstract class BaseQuerySet extends DataIterator
     public function __clone()
     {
         $this->qb = clone $this->qb;
-        $this->queryStringCache = null;
-        $this->currentStatement = null;
+        $this->resetStatement();
     }
 
     ####################################################################################
@@ -295,12 +294,10 @@ abstract class BaseQuerySet extends DataIterator
         foreach ($arguments as $lookup => $value) {
             /** @var \Dja\Db\Model\Field\Base $field */
             list($field, $lookupType, $column) = $this->explainLookup($lookup);
-            $origValue = $value;
-            $value = $field->dbPrepLookup($value);
+//            $origValue = $value;
+//            $value = $field->dbPrepLookup($value);
             list($db_column, $lookupQ, $value) = $this->lookuper->getLookup($lookupType, $this->qi($column), $value, $negate);
-            if (is_array($origValue)) {
-                $value = implode(', ', $value);
-            } elseif ($origValue instanceof \Dja\Db\Model\Expr || $origValue instanceof QueryBuilder) {
+            if ($value instanceof \Dja\Db\Model\Expr || $value instanceof QueryBuilder) {
                 $value = strval($value);
             } else {
                 $value = $this->db->quote($value);

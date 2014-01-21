@@ -5,6 +5,25 @@
  * Time: 15:35
  */
 
+function xrange($start, $limit, $step = 1)
+{
+    if ($start < $limit) {
+        if ($step <= 0) {
+            throw new LogicException('Step must be > 0');
+        }
+        for ($i = $start; $i <= $limit; $i += $step) {
+            yield $i;
+        }
+    } else {
+        if ($step >= 0) {
+            throw new LogicException('Step must be < 0');
+        }
+        for ($i = $start; $i >= $limit; $i += $step) {
+            yield $i;
+        }
+    }
+}
+
 /**
  * @param \Dja\Db\Model\Query\BaseQuerySet $qs
  * @param int $chunkSize
@@ -31,7 +50,8 @@ function chunkedIterator(\Dja\Db\Model\Query\BaseQuerySet $qs, $chunkSize = 1000
  * @param null $default
  * @return null
  */
-function ifsetor(&$value, $default = null) {
+function ifsetor(&$value, $default = null)
+{
     return isset($value) ? $value : $default;
 }
 

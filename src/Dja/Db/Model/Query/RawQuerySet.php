@@ -45,15 +45,26 @@ class RawQuerySet extends DataIterator
         } else {
             $this->db = $metadata->getDbConnection();
         }
-        $this->queryStringCache = str_replace([
+
+        $selectAllFields = [];
+        $dbCols = $this->metadata->getDbColNames();
+        foreach ($dbCols as $colName) {
+            $selectAllFields[] = $this->qi($colName);
+        }
+
+        $this->queryStringCache = str_ireplace([
+            'select *',
             ':t',
             ':pk',
         ], [
+            'SELECT ' . implode(', ', $selectAllFields),
             $this->qi($this->metadata->getDbTableName()),
             $this->qi($this->metadata->getPrimaryKey()),
         ], $query);
 
-        $this->bind($bind);
+        if (null !== $bind) {
+            $this->bind($bind);
+        }
         $this->returnObjects();
     }
 
@@ -75,7 +86,9 @@ class RawQuerySet extends DataIterator
     public function returnObjects()
     {
         $cls = $this->metadata->getModelClass();
-        $this->rowDataMapper = function ($row) use ($cls) {
+        $dbColsAsKeys = array_flip($this->metadata->getDbColNames());
+        $this->rowDataMapper = function ($row) use ($cls, $dbColsAsKeys) {
+            $row = array_intersect_key($row, $dbColsAsKeys);
             return new $cls($row, false);
         };
         return $this;

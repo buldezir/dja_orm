@@ -24,7 +24,7 @@ class QuerySet extends BaseQuerySet
         foreach ($data as $key => $value) {
             $dataReady[$this->qi($key)] = $this->qv($this->metadata->getField($key)->dbPrepValue($value));
         }
-        $this->db->insert($this->qi($this->table), $dataReady);
+        $this->db->insert($this->qi($this->metadata->getDbTableName()), $dataReady);
         return $this->db->lastInsertId();
     }
 
@@ -38,7 +38,7 @@ class QuerySet extends BaseQuerySet
         if (count($this->qb->getQueryPart('where')) === 0) {
             throw new \LogicException('must be WHERE conditions for update');
         }
-        $this->qb->update($this->qi($this->table), $this->qi('t'));
+        $this->qb->update($this->qi($this->metadata->getDbTableName()), $this->qi('t'));
         foreach ($data as $key => $value) {
             $this->qb->set($this->qi($key), $this->db->quote($this->metadata->getField($key)->dbPrepValue($value)));
         }
@@ -54,18 +54,8 @@ class QuerySet extends BaseQuerySet
         if (count($this->qb->getQueryPart('where')) === 0) {
             throw new \LogicException('must be WHERE conditions for delete');
         }
-        $this->qb->delete($this->qi($this->table), $this->qi('t'));
+        $this->qb->delete($this->qi($this->metadata->getDbTableName()), $this->qi('t'));
         return $this->qb->execute();
-    }
-
-    /**
-     * @param $sql
-     * @param array $bind
-     * @return RawQuerySet
-     */
-    public function raw($sql, array $bind = null)
-    {
-        return new RawQuerySet($this->metadata, $sql, $bind, $this->db);
     }
 
     /**
@@ -113,11 +103,11 @@ class QuerySet extends BaseQuerySet
                 $this->qb->leftJoin($this->qi($joinData['selfAlias']), $this->qi($joinData['joinTable']), $this->qi($joinData['joinAlias']), $joinData['on']);
             }
             foreach ($this->metadata->getDbColNames() as $lCol) {
-                $this->qb->addSelect('t.' . $lCol);
+                $this->qb->addSelect($this->qi('t.' . $lCol));
                 $dataMapping[] = $lCol;
             }
             foreach ($this->relatedSelectCols as $underscoreName => $selectAlias) {
-                $this->qb->addSelect($selectAlias);
+                $this->qb->addSelect($this->qi($selectAlias));
                 $dataMapping[] = $underscoreName;
             }
             $cls = $this->metadata->getModelClass();

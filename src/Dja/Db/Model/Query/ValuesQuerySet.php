@@ -49,21 +49,21 @@ class ValuesQuerySet extends BaseQuerySet
             }
             if (null === $this->selectFields) {
                 foreach ($this->metadata->getDbColNames() as $lCol) {
-                    $this->qb->addSelect('t.' . $lCol);
+                    $this->qb->addSelect($this->qi('t.' . $lCol));
                     $dataMapping[] = $lCol;
                 }
                 foreach ($this->relatedSelectCols as $underscoreName => $selectAlias) {
-                    $this->qb->addSelect($selectAlias);
+                    $this->qb->addSelect($this->qi($selectAlias));
                     $dataMapping[] = $underscoreName;
                 }
             } else {
                 foreach ($this->selectFields as $underscoreName) {
                     $selectField = $this->findLookUpField($this->metadata, explode('__', $underscoreName));
                     if (isset($this->relatedSelectCols[$underscoreName])) {
-                        $this->qb->addSelect($this->relatedSelectCols[$underscoreName]);
+                        $this->qb->addSelect($this->qi($this->relatedSelectCols[$underscoreName]));
                         $dataMapping[] = $underscoreName;
                     } else {
-                        $this->qb->addSelect('t.' . $selectField->db_column);
+                        $this->qb->addSelect($this->qi('t.' . $selectField->db_column));
                         $dataMapping[] = $selectField->db_column;
                     }
                 }

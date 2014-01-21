@@ -6,6 +6,10 @@
  */
 namespace Dja\Db\Model\Lookup;
 
+/**
+ * Class LookupAbstract
+ * @package Dja\Db\Model\Lookup
+ */
 abstract class LookupAbstract
 {
     const TYPE_INT = 'int';
@@ -83,6 +87,15 @@ abstract class LookupAbstract
             case 'raw':
                 $rawValue = sprintf($rawValue, $escapedField);
                 $escapedField = '';
+                break;
+            case 'in':
+                if (!is_array($rawValue) && !$rawValue instanceof \Dja\Db\Model\Expr) {
+                    throw new \InvalidArgumentException("value for IN lookup must me array or Expr");
+                }
+                if (is_array($rawValue)) {
+                    $rawValue = array_map('intval', $rawValue);
+                    $rawValue = Expr(implode(', ', $rawValue));
+                }
                 break;
             default:
                 break;

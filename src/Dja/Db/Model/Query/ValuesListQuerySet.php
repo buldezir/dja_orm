@@ -67,14 +67,14 @@ class ValuesListQuerySet extends ValuesQuerySet
             $selectValueField = $this->findLookUpField($this->metadata, explode('__', $this->selectValueField));
 
             if (isset($this->relatedSelectCols[$this->selectKeyField])) {
-                $this->qb->addSelect($this->relatedSelectCols[$this->selectKeyField]);
+                $this->qb->addSelect($this->qi($this->relatedSelectCols[$this->selectKeyField]));
             } else {
-                $this->qb->addSelect('t.' . $selectKeyField->db_column);
+                $this->qb->addSelect($this->qi('t.' . $selectKeyField->db_column));
             }
             if (isset($this->relatedSelectCols[$this->selectValueField])) {
                 $this->qb->addSelect($this->relatedSelectCols[$this->selectValueField]);
             } else {
-                $this->qb->addSelect('t.' . $selectValueField->db_column);
+                $this->qb->addSelect($this->qi('t.' . $selectValueField->db_column));
             }
 
             $this->rowDataMapper = function ($row) use ($selectValueField) {

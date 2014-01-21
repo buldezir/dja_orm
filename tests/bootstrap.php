@@ -24,6 +24,10 @@ register_shutdown_function(function () use ($dbConn) {
     $dbConn->close();
 });
 
+$log = new Doctrine\DBAL\Logging\DebugStack();
+$dbConn->getConfiguration()->setSQLLogger($log);
+SqlLog::$log = $log;
+
 class UserModel extends Dja\Db\Model\Model
 {
     protected static $dbtable = 'user';
@@ -42,6 +46,22 @@ class UserModel extends Dja\Db\Model\Model
     ];
 }
 
+class SqlLog
+{
+    /**
+     * @var \Doctrine\DBAL\Logging\DebugStack
+     */
+    public static $log;
+
+    public static function dump()
+    {
+        array_walk(self::$log->queries, function ($q) {
+            $sql = is_array($q['params']) ? strtr($q['sql'], $q['params']) : $q['sql'];
+            echo $sql . PHP_EOL;
+        });
+    }
+}
+
 function validationErrorsToString(array $validationErrors)
 {
     $result = '';
@@ -56,8 +76,8 @@ CREATE TABLE "public"."user" (
 	"user_id" serial NOT NULL,
 	"username" varchar(255) NOT NULL DEFAULT ''::character varying COLLATE "default",
 	"password" varchar(255) NOT NULL DEFAULT ''::character varying COLLATE "default",
-	"firstname" varchar(32) NOT NULL DEFAULT ''::character varying COLLATE "default",
-	"lastname" varchar(32) NOT NULL DEFAULT ''::character varying COLLATE "default",
+	"firstname" varchar(32) DEFAULT ''::character varying COLLATE "default",
+	"lastname" varchar(32) DEFAULT ''::character varying COLLATE "default",
 	"email" varchar(96) NOT NULL DEFAULT ''::character varying COLLATE "default",
 	"ip" varchar(15) NOT NULL DEFAULT ''::character varying COLLATE "default",
 	"date_added" timestamp(6) NOT NULL,
