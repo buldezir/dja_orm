@@ -5,18 +5,25 @@
  * Time: 15:35
  */
 
+/**
+ * @param $start
+ * @param $limit
+ * @param int $step
+ * @return Generator
+ * @throws \LogicException
+ */
 function xrange($start, $limit, $step = 1)
 {
     if ($start < $limit) {
         if ($step <= 0) {
-            throw new LogicException('Step must be > 0');
+            throw new \LogicException('Step must be > 0');
         }
         for ($i = $start; $i <= $limit; $i += $step) {
             yield $i;
         }
     } else {
         if ($step >= 0) {
-            throw new LogicException('Step must be < 0');
+            throw new \LogicException('Step must be < 0');
         }
         for ($i = $start; $i >= $limit; $i += $step) {
             yield $i;
@@ -36,7 +43,7 @@ function chunkedIterator(\Dja\Db\Model\Query\BaseQuerySet $qs, $chunkSize = 1000
     $allCount = $qs->doCount();
     $expectingResultsCount = $baseLimit !== null ? min($baseLimit, $allCount) : $allCount;
     $numIters = ceil($expectingResultsCount / $chunkSize);
-    foreach (range(0, $numIters - 1) as $offsetMultiplier) {
+    foreach (xrange(0, $numIters - 1) as $offsetMultiplier) {
         $offset = $offsetMultiplier * $chunkSize;
         $qs->_qb()->setFirstResult($offset)->setMaxResults($chunkSize);
         foreach ($qs as $row) {
@@ -86,7 +93,7 @@ function fs($tpl, $arguments)
  */
 function array_diff_assoc_recursive($array1, $array2)
 {
-    $difference = array();
+    $difference = [];
     foreach ($array1 as $key => $value) {
         if (is_array($value)) {
             if (!isset($array2[$key]) || !is_array($array2[$key])) {

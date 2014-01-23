@@ -41,7 +41,7 @@ class UserModel extends Dja\Db\Model\Model
         'lastname' => ['Char', 'default' => ''],
         'date_added' => ['DateTime', 'autoInsert' => true],
         'date_modified' => ['DateTime', 'autoUpdate' => true],
-        'is_active' => ['Bool'],
+        'is_active' => ['Bool', 'default' => true],
         'ip' => ['Char'],
     ];
 }

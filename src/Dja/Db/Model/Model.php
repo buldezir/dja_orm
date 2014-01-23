@@ -196,13 +196,12 @@ abstract class Model implements \ArrayAccess
 
     /**
      * @param Field\Relation $field
-     * @return Model
+     * @return Model|\Dja\Db\Model\Query\QuerySet
      */
     protected function getLazyRelation(\Dja\Db\Model\Field\Relation $field)
     {
         $name = $field->name;
         if (!array_key_exists($name, $this->relationDataCache)) {
-            /** @var Field\ForeignKey $field */
             $this->relationDataCache[$name] = $field->getRelation($this);
         } elseif (is_array($this->relationDataCache[$name])) {
             if (!empty(array_filter($this->relationDataCache[$name]))) {

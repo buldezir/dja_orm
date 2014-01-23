@@ -49,9 +49,6 @@ class QuerySetTest extends PHPUnit_Framework_TestCase
     public function testFilterNull()
     {
         $q = UserModel::objects()->filter(['lastname' => null]);
-//        echo PHP_EOL . $q . PHP_EOL;
-//        echo PHP_EOL . $q->count() . PHP_EOL;
-//        var_dump($q->current()->toArray());
         $this->assertNull($q->current()->lastname);
 
         $q2 = UserModel::objects()->exclude(['lastname' => null]);
@@ -61,7 +58,10 @@ class QuerySetTest extends PHPUnit_Framework_TestCase
     public function testFilterIn1()
     {
         $q = UserModel::objects()->filter(['user_id__in' => [1, 2, 3, 4, 5]]);
-        $this->assertInstanceOf('\\Dja\\Db\\Model\\Model', $q->current());
+        foreach ($q as $obj) {
+            $this->assertContains($obj->user_id, [1, 2, 3, 4, 5]);
+        }
+
     }
 
     public function testFilterIn2()

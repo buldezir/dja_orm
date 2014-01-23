@@ -44,4 +44,6 @@ abstract class Relation extends Base
         $relationClass = $this->relationClass;
         return $relationClass::metadata();
     }
+
+    abstract public function getRelation(\Dja\Db\Model\Model $model);
 }

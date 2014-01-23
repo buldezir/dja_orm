@@ -21,7 +21,7 @@ namespace Dja\Db\Model\Field;
  */
 class ManyToMany extends Relation implements ManyToManyRelation
 {
-    public function __construct(array $options = array())
+    public function __construct(array $options = [])
     {
         $this->_options['self_field'] = null;
         $this->_options['db_table'] = null;
@@ -39,6 +39,9 @@ class ManyToMany extends Relation implements ManyToManyRelation
         }*/
         if ($this->limit_choices_to !== null && !is_array($this->limit_choices_to)) {
             throw new \Exception('"limit_choices_to" must be argument array for model::objects()->filter()');
+        }
+        if (!$this->throughClass && !$this->db_table) {
+            throw new \Exception('Must provide "throughClass" or "db_table" option');
         }
     }
 
@@ -81,7 +84,7 @@ class ManyToMany extends Relation implements ManyToManyRelation
 
     /**
      * @param \Dja\Db\Model\Model $model
-     * @return \Dja\Db\Model\Query
+     * @return \Dja\Db\Model\Query\QuerySet
      */
     public function getRelation(\Dja\Db\Model\Model $model)
     {
@@ -91,21 +94,20 @@ class ManyToMany extends Relation implements ManyToManyRelation
         $throughClass = $this->throughClass;
 
         if ($throughClass) {
-            $in = $throughClass::objects()->filter([$this->self_field => $model->__get($this->self_field)])->valuesDict($this->to_field, $this->to_field);
+            $in = $throughClass::objects()->filter([$this->self_field => $model->__get($this->self_field)])->valuesList($this->to_field);
         } else {
             $sql = sprintf('SELECT "%s" FROM "%s" WHERE "%s" = %d', $this->to_field, $this->db_table, $this->self_field, $model->__get($this->self_field));
             //$in = $relationClass::objects()->setRawSql($sql)->valuesDict($this->to_field, $this->to_field);
             $in = Expr($sql);
         }
 
-        if ($in instanceof \Dja\Db\Model\Expr || count($in) > 0) { // ?! bad code
-            $inst = $relationClass::objects()->filter([$this->to_field . '__in' => $in]);
-            if ($this->limit_choices_to) {
-                $inst->filter($this->limit_choices_to);
-            }
-            return $inst;
+
+        if ($this->limit_choices_to) {
+            $filter = $this->limit_choices_to;
+            $filter[$this->to_field . '__in'] = $in;
+            return $relationClass::objects()->filter($filter);
         } else {
-            return new \ArrayIterator();
+            return $relationClass::objects()->filter([$this->to_field . '__in' => $in]);
         }
     }
 }
