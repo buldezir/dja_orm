@@ -45,6 +45,16 @@ class UserModel extends Dja\Db\Model\Model
         'ip' => ['Char'],
     ];
 }
+class CustomerOrderModel extends Dja\Db\Model\Model
+{
+    protected static $dbtable = 'customer_order';
+    protected static $fields = [
+        'customer_order_id' => ['Auto', 'help_text' => 'первичный ключ'],
+        'date_added' => ['DateTime', 'null' => true, 'help_text' => 'время создания'],
+        'user' => ['ForeignKey', 'relationClass' => 'UserModel', 'db_column' => 'user_id', 'null' => true, 'help_text' => 'ссылка на ответственного менеджера БО'],
+        'order_number' => ['Char', 'null' => true, 'max_length' => 21, 'default' => '', 'blank' => true, 'help_text' => 'полный номер заказа'],
+    ];
+}
 
 class SqlLog
 {

@@ -205,8 +205,12 @@ abstract class Model implements \ArrayAccess
             /** @var Field\ForeignKey $field */
             $this->relationDataCache[$name] = $field->getRelation($this);
         } elseif (is_array($this->relationDataCache[$name])) {
-            $relClass = $field->relationClass;
-            $this->relationDataCache[$name] = new $relClass($this->relationDataCache[$name], false);
+            if (!empty(array_filter($this->relationDataCache[$name]))) {
+                $relClass = $field->relationClass;
+                $this->relationDataCache[$name] = new $relClass($this->relationDataCache[$name], false);
+            } else {
+                $this->relationDataCache[$name] = null;
+            }
         }
         return $this->relationDataCache[$name];
     }
@@ -390,7 +394,7 @@ abstract class Model implements \ArrayAccess
             return isset($this->data[$name]) ? $this->data[$name] : null;
         } elseif ($this->metadata->isVirtual($name)) {
             if ($field->isRelation()) {
-                return $this->getLazyRelation($name);
+                return $this->getLazyRelation($field);
             } else {
                 return isset($this->data[$field->db_column]) ? $this->data[$field->db_column] : null;
             }

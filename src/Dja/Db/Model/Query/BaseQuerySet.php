@@ -8,6 +8,7 @@
 namespace Dja\Db\Model\Query;
 
 use Dja\Db\Model\Metadata;
+use Dja\Db\Model\Model;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Query\QueryBuilder;
 
@@ -15,7 +16,7 @@ use Doctrine\DBAL\Query\QueryBuilder;
  * Class BaseQuerySet
  * @package Dja\Db\Model\Query
  */
-abstract class BaseQuerySet extends DataIterator
+abstract class BaseQuerySet extends DataIterator implements \ArrayAccess
 {
     /**
      * @var Metadata
@@ -149,6 +150,7 @@ abstract class BaseQuerySet extends DataIterator
     /**
      * set Order By part for query
      * @param array $arguments
+     * @throws \DomainException
      * @return $this
      */
     public function order(array $arguments)
@@ -157,10 +159,22 @@ abstract class BaseQuerySet extends DataIterator
         $copy->_qb()->resetQueryPart('orderBy');
         foreach ($arguments as $order) {
             if ($order{0} === '-') {
-                $copy->_qb()->addOrderBy($this->qi(substr($order, 1)), 'DESC');
+                $fName = substr($order, 1);
+                $orderDir = 'DESC';
             } else {
-                $copy->_qb()->addOrderBy($this->qi($order), 'ASC');
+                $fName = $order;
+                $orderDir = 'ASC';
             }
+            $field = $this->findLookUpField($this->metadata, explode('__', $fName));
+            if ($this->metadata->hasFieldObj($field)) {
+                $col = 't.' . $field->db_column;
+            } else {
+                if (!isset($this->relatedSelectCols[$fName])) {
+                    throw new \DomainException("Cant lookup for related field '{$fName}' without selectRelated()");
+                }
+                $col = $this->relatedSelectCols[$fName];
+            }
+            $copy->_qb()->addOrderBy($this->qi($col), $orderDir);
         }
         return $copy;
     }
@@ -175,6 +189,17 @@ abstract class BaseQuerySet extends DataIterator
         $copy = clone $this;
         $copy->_qb()->setFirstResult($offset)->setMaxResults($limit);
         return $copy;
+    }
+
+    /**
+     * @param int $curPage
+     * @param int $itemsPerPage
+     * @return $this
+     */
+    public function byPage($curPage, $itemsPerPage = 50)
+    {
+        $offset = ($curPage - 1) * $itemsPerPage;
+        return $this->limit($itemsPerPage, $offset);
     }
 
     ####################################################################################
@@ -216,6 +241,26 @@ abstract class BaseQuerySet extends DataIterator
             throw new \Exception('Not found');
         }
         return $result;
+    }
+
+    /**
+     * magic
+     * [offset:limit] -> BaseQuerySet
+     * [offset] -> [offset:1]->current()
+     * @param mixed $key
+     * @throws \InvalidArgumentException
+     * @return $this|Model
+     */
+    public function offsetGet($key)
+    {
+        if (strpos($key, ':') !== false) {
+            list($offset, $limit) = explode(':', $key);
+            return $this->limit(intval($limit), intval($offset));
+        } elseif (is_int($key)) {
+            return $this->limit(1, $key)->current();
+        } else {
+            throw new \InvalidArgumentException('Valid arguments for method ' . __METHOD__ . ' are "int:int", int');
+        }
     }
 
     ####################################################################################
@@ -390,5 +435,22 @@ abstract class BaseQuerySet extends DataIterator
         }
         $this->joinMaxDepth = $value;
         $this->buildJoinMap();
+    }
+
+    ####################################################################################
+
+    public function offsetExists($offset)
+    {
+        throw new \BadMethodCallException('Cannot use ' . __METHOD__ . ' for querySet');
+    }
+
+    public function offsetSet($offset, $value)
+    {
+        throw new \BadMethodCallException('Cannot use ' . __METHOD__ . ' for querySet');
+    }
+
+    public function offsetUnset($offset)
+    {
+        throw new \BadMethodCallException('Cannot use ' . __METHOD__ . ' for querySet');
     }
 }
