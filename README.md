@@ -9,27 +9,27 @@ use Dja\Db\Model\Model;
 class User extends Model
 {
     protected static $fields = array(
-        'user_id'       => array('Auto'),
-        'email'         => array('Char'),
-        'password'      => array('Char'),
-        'full_name'     => array('Char', 'default' => ''),
-        'date_added'    => array('DateTime', 'autoInsert' => true),
-        'date_updated'  => array('DateTime', 'autoUpdate' => true),
-        'is_active'     => array('Bool'),
-        'timezone'      => array('Char'),
-        'role'          => array('ForeignKey', 'relationClass' => 'Role'),
+        'user_id'       =>['Auto'],
+        'email'         =>['Char'],
+        'password'      =>['Char'],
+        'full_name'     =>['Char', 'default' => ''],
+        'date_added'    =>['DateTime', 'autoInsert' => true],
+        'date_updated'  =>['DateTime', 'autoUpdate' => true],
+        'is_active'     =>['Bool'],
+        'timezone'      =>['Char'],
+        'role'          =>['ForeignKey', 'relationClass' => 'Role'],
     );
 }
 
 class Role extends Model
 {
     protected static $fields = array(
-        'role_id'       => array('Auto'),
-        'name'          => array('Char'),
-        'is_active'     => array('Bool'),
-        'can_do_smth1'  => array('Bool', 'default' => false),
-        'can_do_smth2'  => array('Bool', 'default' => false),
-        'can_do_smth3'  => array('Bool', 'default' => false),
+        'role_id'       =>['Auto'],
+        'name'          =>['Char'],
+        'is_active'     =>['Bool'],
+        'can_do_smth1'  =>['Bool', 'default' => false],
+        'can_do_smth2'  =>['Bool', 'default' => false],
+        'can_do_smth3'  =>['Bool', 'default' => false],
     );
 }
 
@@ -84,7 +84,7 @@ class TestModel
 {
     protected static $fields = array(
         ...
-        'options' => array('JsonField'),
+        'options' =>['JsonField'],
     );
 }
 $obj = new TestModel;
