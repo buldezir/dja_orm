@@ -7,9 +7,10 @@ defined('DJA_APP_PATH') || define('DJA_APP_PATH', realpath(__DIR__ . '/../htdocs
 $loader = require_once __DIR__ . '/../vendor/autoload.php';
 
 /**
+ * strrrraaaaangeee
  * PHPUnit_Extensions_Story
  */
-require_once '/Users/sasha/projects/php/phpunit/phpunit-story-master/PHPUnit/Extensions/Story/Autoload.php';
+//require_once '/Users/sasha/projects/php/phpunit/phpunit-story-master/PHPUnit/Extensions/Story/Autoload.php';
 
 $dbConn = \Doctrine\DBAL\DriverManager::getConnection(array(
     'driver' => 'pdo_pgsql',
