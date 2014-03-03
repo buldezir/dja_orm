@@ -226,7 +226,7 @@ abstract class BaseQuerySet extends DataIterator implements \ArrayAccess
      * @param $arguments
      * @return \Dja\Db\Model\Model
      * @throws \InvalidArgumentException
-     * @throws \Exception
+     * @throws \RuntimeException
      */
     public function get($arguments)
     {
@@ -238,9 +238,23 @@ abstract class BaseQuerySet extends DataIterator implements \ArrayAccess
         }
         $result = $this->filter($arguments)->current();
         if (!$result) {
-            throw new \Exception('Not found');
+            throw new \RuntimeException('Not found');
         }
         return $result;
+    }
+
+    /**
+     * @param array $arguments
+     * @return Model
+     */
+    public function getOrCreate(array $arguments)
+    {
+        try {
+            return $this->get($arguments);
+        } catch (\RuntimeException $e) {
+            $class = $this->metadata->getModelClass();
+            return new $class($arguments);
+        }
     }
 
     /**

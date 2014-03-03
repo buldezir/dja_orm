@@ -177,6 +177,7 @@ abstract class DataIterator implements \Countable, \Iterator
         $this->internalPointer = 0;
         $this->currentStatement = null;
         $this->currentFetchedRow = null;
+        $this->data = [];
         return $this;
     }
 

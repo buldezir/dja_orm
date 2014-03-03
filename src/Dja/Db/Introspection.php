@@ -112,7 +112,7 @@ class Introspection
 
         $colConfArray = [];
 
-        $code = 'class ' . $this->table2model($table->getName()) . ' extends Dja\Db\Model\Model' . PHP_EOL;
+        $code = 'class ' . $this->table2model($table->getName()) . ' extends \Dja\Db\Model\Model' . PHP_EOL;
         $code .= '{' . PHP_EOL;
         $code .= '    protected static $dbtable = \'' . $table->getName() . '\';' . PHP_EOL;
         $code .= '    protected static $fields = [' . PHP_EOL;

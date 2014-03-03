@@ -52,15 +52,24 @@ class RawQuerySet extends DataIterator
             $selectAllFields[] = $this->qi($colName);
         }
 
-        $this->queryStringCache = str_ireplace([
+        $query = str_ireplace([
             'select *',
             ':t',
-            ':pk',
         ], [
             'SELECT ' . implode(', ', $selectAllFields),
             $this->qi($this->metadata->getDbTableName()),
-            $this->qi($this->metadata->getPrimaryKey()),
         ], $query);
+
+        $query = preg_replace_callback('/:(\w+)/', function ($matches) use ($metadata) {
+            if ($metadata->__isset($matches[1])) {
+                return $this->qi($metadata->getField($matches[1])->db_column);
+            } else {
+                return $matches[0];
+            }
+        }, $query);
+
+        $this->queryStringCache = $query;
+
 
         if (null !== $bind) {
             $this->bind($bind);

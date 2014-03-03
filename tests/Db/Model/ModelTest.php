@@ -31,6 +31,16 @@ class ModelTest extends PHPUnit_Framework_TestCase
         $this->assertEquals(0, $countQ3 - $countQ2, 'Must be no new queries because related object data provided for hydration');
     }
 
+    public function testSetRelObject()
+    {
+        $obj1 = new CustomerOrderModel();
+        $relObj1 = new UserModel([
+            'user_id' => 1,
+        ]);
+        $obj1->user = $relObj1;
+        $this->assertEquals($relObj1->user_id, $obj1->user_id);
+    }
+
     public function testSetupDefaultValues()
     {
         $obj = new UserModel();
@@ -48,5 +58,14 @@ class ModelTest extends PHPUnit_Framework_TestCase
         $obj->email = 'zzzzzzzz@ya.ru';
         $v = $obj->validate();
         $this->assertCount(0, $v, validationErrorsToString($v));
+    }
+
+    public function testRefresh()
+    {
+        $obj = UserModel::objects()->get(1);
+        $initial = $obj->username;
+        $obj->username = 'testtest';
+        $obj->refresh();
+        $this->assertEquals($initial, $obj->username);
     }
 }

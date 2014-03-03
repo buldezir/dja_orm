@@ -99,4 +99,21 @@ class QuerySetTest extends PHPUnit_Framework_TestCase
         $countQ2 = count(SqlLog::$log->queries);
         $this->assertEquals(1, $countQ2 - $countQ1);
     }
+
+    public function testSelectingNotCached()
+    {
+        $countQ1 = count(SqlLog::$log->queries);
+        $q = UserModel::objects()->limit(5);
+        $q->count();
+        foreach ($q as $obj) {
+
+        }
+        $q->count();
+        foreach ($q as $obj) {
+
+        }
+        $q->count();
+        $countQ2 = count(SqlLog::$log->queries);
+        $this->assertEquals(2, $countQ2 - $countQ1);
+    }
 }

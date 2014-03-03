@@ -101,6 +101,15 @@ class Manager
     }
 
     /**
+     * @param array $arguments
+     * @return \Dja\Db\Model\Model
+     */
+    public function getOrCreate(array $arguments)
+    {
+        return $this->getQuerySet()->getOrCreate($arguments);
+    }
+
+    /**
      * @return QuerySet
      */
     public function all()

@@ -6,6 +6,12 @@ use Dja\Db\Model\Query\Manager;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\EventDispatcher\GenericEvent as Event;
 
+/**
+ * Class Model
+ * @package Dja\Db\Model
+ *
+ * @property int $pk
+ */
 abstract class Model implements \ArrayAccess
 {
     const EVENT_BEFORE_SAVE = 'event.beforeSave';
@@ -36,6 +42,11 @@ abstract class Model implements \ArrayAccess
      * @var bool
      */
     protected $isNewRecord = true;
+
+    /**
+     * @var bool
+     */
+    protected $isPersistable = true;
 
     /**
      * @var bool
@@ -148,6 +159,9 @@ abstract class Model implements \ArrayAccess
             $this->setFromArray($data);
         } else {
             $this->hydrate($data, $fastRawSet);
+            if (empty($this->pk)) {
+                $this->isPersistable = false;
+            }
         }
         $this->init();
         $this->inited = true;
@@ -306,10 +320,16 @@ abstract class Model implements \ArrayAccess
      */
     public function save()
     {
+        if (!$this->isPersistable) {
+            throw new \LogicException("This object is not persistable (may be it loaded with aggregation)");
+        }
         if ($this->eventDispatch(self::EVENT_BEFORE_SAVE)) {
             if ($this->isNewRecord) {
                 $newPK = static::objects()->doInsert($this->toArray());
                 $this->data[$this->metadata->pk->db_column] = $newPK;
+                if (empty($newPK)) {
+                    $this->isPersistable = false;
+                }
             } else {
                 $updData = $this->getChangedValues();
                 //unset($updData[$this->metadata->pk->db_column]);
@@ -328,6 +348,9 @@ abstract class Model implements \ArrayAccess
      */
     public function delete()
     {
+        if (!$this->isPersistable) {
+            throw new \LogicException("This object is not persistable (may be it loaded with aggregation)");
+        }
         if ($this->eventDispatch(self::EVENT_BEFORE_DELETE)) {
             static::objects()->filter(['pk' => $this->pk])->doDelete();
             $this->eventDispatch(self::EVENT_AFTER_DELETE);
@@ -370,16 +393,24 @@ abstract class Model implements \ArrayAccess
 
     /**
      * reload object data from database
+     * @return $this
      * @throws \Exception
      */
     public function refresh()
     {
-        if ($this->isNewRecord()) {
+        if ($this->isNewRecord() || !$this->isPersistable) {
             throw new \Exception('Cant refresh not stored object');
         }
-        $values = static::objects()->values()->filter('pk', $this->pk);
-        $this->setFromArray(current($values));
-        $this->cleanData = $this->data;
+        $qs = static::objects()->filter(['pk' => $this->pk])->values();
+        $row = $qs->current();
+        if (!$row) {
+            throw new \Exception('Cant find stored object');
+        }
+        $this->inited = false;
+        $this->hydrated = false;
+        $this->hydrate($row);
+        $this->inited = true;
+        return $this;
     }
 
     /**
