@@ -99,6 +99,12 @@ foreach($dict as $userId => $userName){}
 // raw query 
 $iteratorOverModels = User::objects()->raw('SELECT * FROM users');
 $iteratorOverArrays = User::objects()->raw('SELECT * FROM users')->returnValues();
+
+// iterate fetching $chunkSize chunks
+$chunkSize = 1000;
+foreach (chunkedIterator($allUsers, $chunkSize) as $k => $v) {
+    // for example if we have 5000 users there will be 5 db queries, in this foreach
+}
 ```
 **U can write your own fields**
 ```php
