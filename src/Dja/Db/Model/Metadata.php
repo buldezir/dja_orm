@@ -39,12 +39,23 @@ class Metadata
 
     /**
      * array or inited field objects
-     * @var array
+     * @var Field\Base[]
      */
     protected $_localFields = array();
+
+    /**
+     * @var Field\Base[]
+     */
     protected $_many2manyFields = array();
+
+    /**
+     * @var Field\Base[]
+     */
     protected $_virtualFields = array();
 
+    /**
+     * @var Field\Base[]
+     */
     protected $_allFields = array(); // just cache
 
     /**
@@ -266,6 +277,28 @@ class Metadata
     public function countLocalFields()
     {
         return count($this->_localFields);
+    }
+
+    /**
+     * @param string $key
+     * @return Field\Base|Field\Relation
+     * @throws \LogicException
+     */
+    public function findField($key)
+    {
+        if (strpos($key, '__') === false) {
+            return $this->getField($key);
+        } else {
+            $lookupArr = explode('__', $key);
+            $f = array_shift($lookupArr);
+            $field = $this->getField($f);
+            if ($field->isRelation()) {
+                /** @var \Dja\Db\Model\Field\Relation $field */
+                return $field->getRelationMetadata()->findField(implode('__', $lookupArr));
+            } else {
+                throw new \LogicException("Cant find deeper, because {$f} is not relation");
+            }
+        }
     }
 
     /**

@@ -62,9 +62,9 @@ class ValuesListQuerySet extends ValuesQuerySet
             if (null === $this->selectKeyField) {
                 $selectKeyField = $this->metadata->getField('pk');
             } else {
-                $selectKeyField = $this->findLookUpField($this->metadata, explode('__', $this->selectKeyField));
+                $selectKeyField = $this->metadata->findField($this->selectKeyField);
             }
-            $selectValueField = $this->findLookUpField($this->metadata, explode('__', $this->selectValueField));
+            $selectValueField = $this->metadata->findField($this->selectValueField);
 
             if (isset($this->relatedSelectCols[$this->selectKeyField])) {
                 $this->qb->addSelect($this->qi($this->relatedSelectCols[$this->selectKeyField]));

@@ -58,7 +58,7 @@ class ValuesQuerySet extends BaseQuerySet
                 }
             } else {
                 foreach ($this->selectFields as $underscoreName) {
-                    $selectField = $this->findLookUpField($this->metadata, explode('__', $underscoreName));
+                    $selectField = $this->metadata->findField($underscoreName);
                     if (isset($this->relatedSelectCols[$underscoreName])) {
                         $this->qb->addSelect($this->qi($this->relatedSelectCols[$underscoreName]));
                         $dataMapping[] = $underscoreName;

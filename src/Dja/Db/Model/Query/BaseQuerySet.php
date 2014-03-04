@@ -165,7 +165,7 @@ abstract class BaseQuerySet extends DataIterator implements \ArrayAccess
                 $fName = $order;
                 $orderDir = 'ASC';
             }
-            $field = $this->findLookUpField($this->metadata, explode('__', $fName));
+            $field = $this->metadata->findField($fName);
             if ($this->metadata->hasFieldObj($field)) {
                 $col = 't.' . $field->db_column;
             } else {
@@ -381,33 +381,17 @@ abstract class BaseQuerySet extends DataIterator implements \ArrayAccess
         } else {
             $lookupType = 'exact';
         }
-        $field = $this->findLookUpField($this->metadata, $lookupArr);
+        $lookup = implode('__', $lookupArr);
+        $field = $this->metadata->findField($lookup);
 
         if ($this->metadata->hasFieldObj($field)) {
             return [$field, $lookupType, 't.' . $field->db_column];
         } else {
-            $db_column_a = implode('__', $lookupArr);
-            if (!isset($this->relatedSelectCols[$db_column_a])) {
-                throw new \DomainException("Cant lookup for related field '{$db_column_a}' without selectRelated()");
+            if (!isset($this->relatedSelectCols[$lookup])) {
+                throw new \DomainException("Cant lookup for related field '{$lookup}' without selectRelated()");
             }
-            return [$field, $lookupType, $this->relatedSelectCols[$db_column_a]];
+            return [$field, $lookupType, $this->relatedSelectCols[$lookup]];
         }
-    }
-
-    /**
-     * @param Metadata $md
-     * @param array $lookupArr
-     * @return \Dja\Db\Model\Field\Relation
-     */
-    protected function findLookUpField(Metadata $md, array $lookupArr)
-    {
-        $f = array_shift($lookupArr);
-        $field = $md->getField($f);
-        if (count($lookupArr) && $field->isRelation()) {
-            /** @var \Dja\Db\Model\Field\Relation $field */
-            $field = $this->findLookUpField($field->getRelationMetadata(), $lookupArr);
-        }
-        return $field;
     }
 
     ####################################################################################
