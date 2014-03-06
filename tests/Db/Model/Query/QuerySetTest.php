@@ -13,10 +13,43 @@ class QuerySetTest extends PHPUnit_Framework_TestCase
         $this->assertInstanceOf('\\Dja\\Db\\Model\\Model', $q->all()->current());
     }
 
+    public function testGetFailArg()
+    {
+        $this->setExpectedException('\\InvalidArgumentException');
+        $obj = UserModel::objects()->get('bad arg');
+    }
+
+    public function testGetFailFound()
+    {
+        $this->setExpectedException('\\RuntimeException');
+        $obj = UserModel::objects()->get(99999);
+    }
+
     public function testLimit()
     {
         $q = UserModel::objects()->limit(5);
         $this->assertCount(5, $q);
+    }
+
+    public function testDoCount()
+    {
+        $q = UserModel::objects()->doCount();
+        $this->assertInternalType('int', $q);
+
+        $q = UserModel::objects()->doCount(true);
+        $this->assertInternalType('int', $q);
+    }
+
+    public function testOrder()
+    {
+        $q = UserModel::objects()->order(['-username']);
+        $this->assertContains('ORDER BY "t"."username" DESC', strval($q));
+    }
+
+    public function testOrderFail()
+    {
+        $this->setExpectedException('\\DomainException');
+        $q = CustomerOrderModel::objects()->order(['user__user_id']);
     }
 
     public function testPager()
@@ -37,6 +70,12 @@ class QuerySetTest extends PHPUnit_Framework_TestCase
         $this->assertCount(10, $q);
     }
 
+    public function testOffsetsFailArg()
+    {
+        $this->setExpectedException('\\InvalidArgumentException');
+        $q = UserModel::objects()->all()['10-10'];
+    }
+
     public function testFilterCommon()
     {
         $q = UserModel::objects()->filter(['user_id__gt' => 30, 'user_id__lt' => 40]);
@@ -44,6 +83,12 @@ class QuerySetTest extends PHPUnit_Framework_TestCase
         $this->assertInstanceOf('\\Dja\\Db\\Model\\Model', $obj);
         $this->assertGreaterThan(30, $obj->user_id);
         $this->assertLessThan(40, $obj->user_id);
+    }
+
+    public function testFilterFail()
+    {
+        $this->setExpectedException('\\DomainException');
+        $q = CustomerOrderModel::objects()->filter(['user__user_id__gt' => 30]);
     }
 
     public function testFilterNull()
@@ -73,7 +118,7 @@ class QuerySetTest extends PHPUnit_Framework_TestCase
     public function testSelectRelated()
     {
         $countQ1 = count(SqlLog::$log->queries);
-        $q = CustomerOrderModel::objects()->limit(10)->selectRelated(['depth' => 1])->order(['-user__user_id']);
+        $q = CustomerOrderModel::objects()->selectRelated(['depth' => 1])->filter(['user__user_id__gte' => 1])->limit(10)->order(['-user__user_id']);
         foreach ($q as $obj) {
             if ($obj->user) {
                 $this->assertInstanceOf('\\UserModel', $obj->user);
@@ -83,6 +128,12 @@ class QuerySetTest extends PHPUnit_Framework_TestCase
         }
         $countQ2 = count(SqlLog::$log->queries);
         $this->assertEquals(1, $countQ2 - $countQ1);
+    }
+
+    public function testSelectRelatedDecrementDepth()
+    {
+        $this->setExpectedException('\\InvalidArgumentException');
+        $q = CustomerOrderModel::objects()->selectRelated(['depth' => 3])->selectRelated(['depth' => 1]);
     }
 
     public function testSelectingCached()

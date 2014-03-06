@@ -68,4 +68,18 @@ class ModelTest extends PHPUnit_Framework_TestCase
         $obj->refresh();
         $this->assertEquals($initial, $obj->username);
     }
+
+    public function testToArray()
+    {
+        /** @var CustomerOrderModel $co */
+        $co = CustomerOrderModel::objects()->exclude(['user' => null, 'user_id' => 0])->limit(1)->current();
+        $arr = $co->toArray(2);
+        $this->assertArrayHasKey('user', $arr);
+        $this->assertSame($co->user_id, $arr['user']);
+
+        $co = CustomerOrderModel::objects()->exclude(['user' => null, 'user_id' => 0])->limit(1)->selectRelated(['user'])->current();
+        $arr = $co->toArray(2);
+        $this->assertArrayHasKey('user', $arr);
+        $this->assertInternalType('array', $arr['user']);
+    }
 }

@@ -9,7 +9,7 @@ class ValuesListQuerySetTest extends PHPUnit_Framework_TestCase
 {
     public function testBase()
     {
-        $q = UserModel::objects()->limit(5)->valuesList('username', 'user_id');
+        $q = UserModel::objects()->valuesList('username', 'user_id')->limit(5);
         foreach ($q as $obj) {
             $this->assertInternalType('string', $obj);
         }

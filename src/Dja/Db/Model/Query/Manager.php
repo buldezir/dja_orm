@@ -68,7 +68,6 @@ class Manager
      */
     public function doInsert(array $data)
     {
-
         return $this->getQuerySet()->doInsert($data);
     }
 
@@ -78,7 +77,6 @@ class Manager
      */
     public function doUpdate(array $data)
     {
-
         return $this->getQuerySet()->doUpdate($data);
     }
 
@@ -87,7 +85,6 @@ class Manager
      */
     public function doDelete()
     {
-
         return $this->getQuerySet()->doDelete();
     }
 

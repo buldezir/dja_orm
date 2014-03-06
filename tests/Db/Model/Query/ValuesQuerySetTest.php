@@ -10,7 +10,7 @@ class ValuesQuerySetTest extends PHPUnit_Framework_TestCase
     public function testBase()
     {
         $pkCol = UserModel::metadata()->getPrimaryKey();
-        $q = UserModel::objects()->limit(5)->values();
+        $q = UserModel::objects()->values()->limit(5);
         foreach ($q as $obj) {
             $this->assertInternalType('array', $obj);
             $this->assertArrayHasKey($pkCol, $obj);
