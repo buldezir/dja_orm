@@ -24,11 +24,11 @@ class ManagerTest extends \PHPUnit_Framework_TestCase
         $this->assertTrue($obj->isNewRecord());
     }
 
-    public function testDoUpdateInsertFail()
-    {
-        $this->setExpectedException('\\LogicException');
-        UserModel::objects()->doDelete();
-        UserModel::objects()->doUpdate([]);
-    }
+//    public function testDoUpdateInsertFail()
+//    {
+//        $this->setExpectedException('\\LogicException');
+//        UserModel::objects()->doDelete();
+//        UserModel::objects()->doUpdate([]);
+//    }
 }
  

@@ -46,6 +46,30 @@ class QuerySet extends BaseQuerySet
     }
 
     /**
+     * Model::objects()->filter(['pk' => 1])->doIncrement(['cnt_views' => 1, 'cnt_left' => -1]);
+     *
+     * @param array $data
+     * @return mixed
+     * @throws \LogicException
+     * @throws \InvalidArgumentException
+     */
+    public function doIncrement(array $data)
+    {
+        if (count($this->qb->getQueryPart('where')) === 0) {
+            throw new \LogicException('must be WHERE conditions for update');
+        }
+        $this->qb->update($this->qi($this->metadata->getDbTableName()), $this->qi('t'));
+        foreach ($data as $key => $value) {
+            if (!is_numeric($value)) {
+                throw new \InvalidArgumentException('increment values must be numeric');
+            }
+            $op = $value >= 0 ? '+' . $value : $value;
+            $this->qb->set($this->qi($key), $this->qi($key) . $op);
+        }
+        return $this->qb->execute();
+    }
+
+    /**
      * @return int
      * @throws \LogicException
      */
