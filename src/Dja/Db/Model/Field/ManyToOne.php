@@ -29,6 +29,14 @@ class ManyToOne extends Relation implements ManyRelation
         }
     }
 
+    /**
+     * @return null
+     */
+    public function getDoctrineColumn()
+    {
+        return null;
+    }
+
     public function init()
     {
         if ($this->self_field === null) {

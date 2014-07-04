@@ -60,6 +60,7 @@ class RawQuerySet extends DataIterator
             $this->qi($this->metadata->getDbTableName()),
         ], $query);
 
+        // auto replace :field_name placeholders by their quoted db column names
         $query = preg_replace_callback('/:(\w+)/', function ($matches) use ($metadata) {
             if ($metadata->__isset($matches[1])) {
                 return $this->qi($metadata->getField($matches[1])->db_column);
@@ -70,7 +71,7 @@ class RawQuerySet extends DataIterator
 
         $this->queryStringCache = $query;
 
-
+        // other :somename placeholders treated as prepared statement bindings
         if (null !== $bind) {
             $this->bind($bind);
         }

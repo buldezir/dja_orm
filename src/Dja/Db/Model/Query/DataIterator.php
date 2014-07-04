@@ -75,7 +75,7 @@ abstract class DataIterator implements \Countable, \Iterator
 
     /**
      * fetches all rows and stores them in array
-     * @return array
+     * @return \Dja\Db\Model\Model[]
      */
     public function cached()
     {

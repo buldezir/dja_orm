@@ -7,6 +7,8 @@
 
 namespace Dja\Db\Model\Field;
 
+use Doctrine\DBAL\Schema\Column;
+use Doctrine\DBAL\Types\Type;
 use Dja\Db\Model\Model;
 
 /**
@@ -23,6 +25,24 @@ class ForeignKey extends Relation implements SingleRelation
         parent::__construct($options);
 
         $this->setOption('db_index', true); // always index this col (?)
+    }
+
+    /**
+     * @return \Doctrine\DBAL\Schema\Column
+     */
+    public function getDoctrineColumn()
+    {
+        $type = Type::INTEGER;
+        if ($this->max_length <= 19) {
+            $type = Type::BIGINT;
+        }
+        if ($this->max_length <= 10) {
+            $type = Type::INTEGER;
+        }
+        if ($this->max_length <= 5) {
+            $type = Type::SMALLINT;
+        }
+        return new Column($this->db_column, Type::getType($type));
     }
 
     public function init()

@@ -16,37 +16,38 @@ use Dja\Db\Model\Metadata;
  * @property string $name
  * @property mixed $default
  * @property string $db_column
- * @property bool $is_null
- * @property bool $is_unique
+ * @property bool $null
+ * @property bool $unique
  * @property array $choices
+ * @property int $max_length
+ * @property
  *
  * @property \Dja\Db\Model\Model $ownerClass
  * @property \Dja\Db\Model\Model $relationClass
  *
  *
  */
-class Base
+abstract class Base
 {
     /**
      * @var array
      */
     protected $_options = [
-        'name'         => null,
-        'type'         => null,
-        'primary_key'  => false,
-        'db_column'    => null,
-        'db_index'     => false,
-        'max_length'   => null,
-        'blank'        => true,
-        'null'         => false,
-        'unique'       => false,
-        'choices'      => null,
-        'default'      => null,
-        'editable'     => true,
-        'help_text'    => '',
+        'name' => null,
+        'primary_key' => false,
+        'db_column' => null,
+        'db_index' => false,
+        'max_length' => null,
+        'blank' => true,
+        'null' => false,
+        'unique' => false,
+        'choices' => null,
+        'default' => null,
+        'editable' => true,
+        'help_text' => '',
         'verbose_name' => null,
-        'using'        => null,
-        'auto_increment'=> false,
+        'using' => null,
+        'auto_increment' => false,
         'ownerClass' => null,
     ];
 
@@ -67,6 +68,11 @@ class Base
     {
         $this->setOptions($options);
     }
+
+    /**
+     * @return \Doctrine\DBAL\Schema\Column
+     */
+    abstract public function getDoctrineColumn();
 
     /**
      * for overriding

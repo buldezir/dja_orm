@@ -7,8 +7,10 @@
 
 namespace Dja\Db;
 
+use Dja\Util\Inflector;
 use Doctrine\DBAL\Schema\Column;
 use Doctrine\DBAL\Schema\Table;
+use Doctrine\DBAL\Types\Type;
 
 /**
  * Class Introspection
@@ -24,16 +26,18 @@ use Doctrine\DBAL\Schema\Table;
 class Introspection
 {
     public static $dbType2FieldClass = [
-        'integer' => 'Int',
-        'bigint' => 'Int',
-        'smallint' => 'Int',
-        'decimal' => 'Float',
-        'string' => 'Char',
-        'text' => 'Text',
-        'datetime' => 'DateTime',
-        'date' => 'Date',
-        'time' => 'Time',
-        'boolean' => 'Bool',
+        Type::INTEGER => 'Int',
+        Type::BIGINT => 'Int',
+        Type::SMALLINT => 'Int',
+        Type::DECIMAL => 'Float',
+        Type::FLOAT => 'Float',
+        Type::STRING => 'Char',
+        Type::TEXT => 'Text',
+        Type::DATETIME => 'DateTime',
+        Type::DATE => 'Date',
+        Type::TIME => 'Time',
+        Type::BOOLEAN => 'Bool',
+        Type::JSON_ARRAY => 'Json',
     ];
 
     public $generateQueue = [];
@@ -57,8 +61,17 @@ class Introspection
     /**
      * @var string
      */
-    protected $postfix;
+    protected $namespace;
 
+    /**
+     * @var string
+     */
+    protected $baseClass = '\Dja\Db\Model\Model';
+
+    /**
+     * @param \Doctrine\DBAL\Connection $db
+     * @param array $generateQueue
+     */
     public function __construct(\Doctrine\DBAL\Connection $db, $generateQueue = [])
     {
         $this->db = $db;
@@ -112,7 +125,7 @@ class Introspection
 
         $colConfArray = [];
 
-        $code = 'class ' . $this->table2model($table->getName()) . ' extends \Dja\Db\Model\Model' . PHP_EOL;
+        $code = 'class ' . $this->table2model($table->getName()) . ' extends ' . $this->baseClass . PHP_EOL;
         $code .= '{' . PHP_EOL;
         $code .= '    protected static $dbtable = \'' . $table->getName() . '\';' . PHP_EOL;
         $code .= '    protected static $fields = [' . PHP_EOL;
@@ -123,7 +136,8 @@ class Introspection
         $code .= '    ];' . PHP_EOL;
         $code .= '}' . PHP_EOL;
 
-        $code = $this->classDoc($table, $colConfArray) . PHP_EOL . $code;
+        $nsCode = $this->namespace ? 'namespace ' . $this->namespace . ';' . PHP_EOL : '';
+        $code = $nsCode . PHP_EOL . $this->classDoc($table, $colConfArray) . PHP_EOL . $code;
 
         return $code;
     }
@@ -134,10 +148,7 @@ class Introspection
      */
     protected function table2model($tname)
     {
-        $s = $tname;
-        $a = preg_split('/[- _]/', $s);
-        $a = array_map('ucfirst', $a);
-        return $this->prefix . implode('', $a) . $this->postfix;
+        return $this->prefix . Inflector::classify($tname);
     }
 
     protected function classDoc(Table $table, array $colConfArray)
@@ -228,18 +239,30 @@ class Introspection
     }
 
     /**
-     * @param mixed $postfix
+     * @param string $namespace
      */
-    public function setPostfix($postfix)
+    public function setNamespace($namespace)
     {
-        $this->postfix = $postfix;
+        $this->namespace = $namespace;
     }
 
     /**
-     * @param mixed $prefix
+     * @param string $prefix
      */
     public function setPrefix($prefix)
     {
         $this->prefix = $prefix;
+    }
+
+    /**
+     * @param string $fullNameWithNameSpace
+     * @throws \InvalidArgumentException
+     */
+    public function setBaseClass($fullNameWithNameSpace)
+    {
+        if (!class_exists($fullNameWithNameSpace)) {
+            throw new \InvalidArgumentException("Cannot extend {$fullNameWithNameSpace}");
+        }
+        $this->baseClass = $fullNameWithNameSpace;
     }
 }

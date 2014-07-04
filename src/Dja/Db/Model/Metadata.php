@@ -2,13 +2,15 @@
 
 namespace Dja\Db\Model;
 
+use Dja\Util\Inflector;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\EventDispatcher\GenericEvent as Event;
 
 class Metadata
 {
-    const EVENT_AFTER_INIT = 'event.afterFieldsInit';
+    const EVENT_AFTER_CONFIG = 'event.afterConfigInit';
     const EVENT_AFTER_ADD = 'event.afterFieldAdd';
+    const EVENT_AFTER_INIT = 'event.afterFieldsInit';
 
     /**
      * @var \Doctrine\DBAL\Connection
@@ -18,7 +20,7 @@ class Metadata
     /**
      * @var array
      */
-    protected static $instances = array();
+    protected static $instances = [];
 
     /**
      * @var string
@@ -30,33 +32,42 @@ class Metadata
      */
     protected $dbTableName;
 
-    protected $primaryKey;
-
     /**
      * @var EventDispatcher
      */
     protected $eventd;
 
     /**
-     * array or inited field objects
+     * array of inited field objects
      * @var Field\Base[]
      */
-    protected $_localFields = array();
+    protected $_localFields = [];
 
     /**
      * @var Field\Base[]
      */
-    protected $_many2manyFields = array();
+    protected $_many2manyFields = [];
 
     /**
      * @var Field\Base[]
      */
-    protected $_virtualFields = array();
+    protected $_virtualFields = [];
 
     /**
      * @var Field\Base[]
      */
-    protected $_allFields = array(); // just cache
+    protected $_allFields = []; // just cache
+
+    /**
+     * @var array
+     */
+    protected $gettersAndSetters = ['get' => [], 'set' => []];
+
+    /**
+     * temporary storage for fields config while initing
+     * @var array
+     */
+    protected $fieldsTmp = [];
 
     /**
      * @param $modelClass
@@ -75,6 +86,7 @@ class Metadata
 
     /**
      * @param $modelClass
+     * @throws \LogicException
      * @throws \InvalidArgumentException
      */
     public function __construct($modelClass)
@@ -83,28 +95,77 @@ class Metadata
         if ($refl->isAbstract()) {
             throw new \InvalidArgumentException("Cannot create metadata manager for abstract class '{$modelClass}'");
         }
-        $staticProps = $refl->getStaticProperties();
-        $dbTableName = $staticProps['dbtable'];
-        $this->fields = $this->collectFieldConfig($refl);
-        if ($dbTableName !== null) {
-            $this->dbTableName = $dbTableName;
+        if (!$refl->isSubclassOf('\\Dja\\Db\\Model\\Model')) {
+            throw new \LogicException("Cannot create metadata manager for class '{$modelClass}' that is not subclass of Model");
         }
         $this->modelClassName = $modelClass;
         $this->eventd = new EventDispatcher();
+        $this->collectConfig($refl);
     }
 
     /**
-     * @param array $data
-     * @return array
+     * @param $fName
+     * @return null
      */
-    public function filterData(array $data)
+    public function getterName($fName)
     {
-        foreach ($data as $key => $value) {
-            if (isset($this->$key)) {
-                $data[$key] = $this->getField($key)->fromDbValue($value);
+        return isset($this->gettersAndSetters['get'][$fName]) ? $this->gettersAndSetters['get'][$fName] : null;
+    }
+
+    /**
+     * @param $fName
+     * @return null
+     */
+    public function setterName($fName)
+    {
+        return isset($this->gettersAndSetters['set'][$fName]) ? $this->gettersAndSetters['set'][$fName] : null;
+    }
+
+    /**
+     * @param \ReflectionClass $refl
+     */
+    protected function collectGettersSetters(\ReflectionClass $refl)
+    {
+        foreach (array_keys($this->fieldsTmp) as $fName) {
+            $cc = Inflector::classify($fName);
+            $getter = 'get' . $cc;
+            if ($refl->hasMethod($getter)) {
+                $this->gettersAndSetters['get'][$fName] = $getter;
+            }
+            $setter = 'set' . $cc;
+            if ($refl->hasMethod($setter)) {
+                $this->gettersAndSetters['set'][$fName] = $setter;
             }
         }
-        return $data;
+    }
+
+    /**
+     * @param \ReflectionClass $refl
+     * @throws \UnderflowException
+     */
+    protected function collectConfig(\ReflectionClass $refl)
+    {
+        if ($refl->hasMethod('config')) {
+            $confMethod = $refl->getMethod('config');
+            $conf = $confMethod->invoke(null);
+            if (!isset($conf['fields'])) {
+                throw new \UnderflowException('U must declare "fields" in config');
+            }
+            $this->fieldsTmp = $conf['fields'];
+            $this->dbTableName = isset($conf['dbtable']) ? $conf['dbtable'] : null;
+        } else {
+            $staticProps = $refl->getStaticProperties();
+            if (empty($staticProps['fields'])) {
+                throw new \UnderflowException('U must declare static property "fields"');
+            }
+            $this->fieldsTmp = $this->collectFieldConfig($refl);
+            $this->dbTableName = !empty($staticProps['dbtable']) ? $staticProps['dbtable'] : null;
+            $conf = [
+                'fields' => $this->fieldsTmp,
+                'dbtable' => $this->dbTableName,
+            ];
+        }
+        $this->events()->dispatch(self::EVENT_AFTER_CONFIG, new Event($this, $conf));
     }
 
     /**
@@ -114,13 +175,14 @@ class Metadata
      */
     protected function collectFieldConfig(\ReflectionClass $refl)
     {
-        $fields = array();
-        $tree = array();
+        $fields = [];
+        $tree = [];
         $parent = $refl;
         while ($parent && $parent->getShortName() !== 'Model') {
             $tree[] = $parent;
             $parent = $parent->getParentClass();
         }
+        /** @var \ReflectionClass[] $tree */
         $tree = array_reverse($tree);
         foreach ($tree as $refl) {
             $staticProps = $refl->getStaticProperties();
@@ -132,42 +194,40 @@ class Metadata
     /**
      * @param string $name
      * @param array $options
-     * @param bool $throw
      * @return $this
      */
-    public function addField($name, array $options, $throw = false)
+    public function addField($name, array $options)
     {
-        if ($throw) {
-            $this->_addField($name, $options);
-        } else {
-            try {
-                $this->_addField($name, $options);
-            } catch (\Exception $e) {
-                echo '<pre>' . $e . '</pre>';
-                /* @todo: error handler */
-            }
-        }
+        $this->_addField($name, $options);
         return $this;
     }
 
     /**
      * @param string $name
-     * @param array $options
+     * @param array|Field\Base $options
      * @throws \Exception
      */
-    protected function _addField($name, array $options)
+    protected function _addField($name, $options)
     {
-        $fieldClass = array_shift($options);
-        if ($fieldClass{0} !== '\\') {
-            $fieldClass = __NAMESPACE__ . '\\Field\\' . $fieldClass;
-        }
-        $options['name'] = $name;
-        $options['ownerClass'] = $this->modelClassName;
-        /** @var Field\Base $fieldObj */
-        $fieldObj = new $fieldClass($options);
         $baseClass = __NAMESPACE__ . '\\Field\\Base';
-        if (!$fieldObj instanceof $baseClass) {
-            throw new \Exception("Field '$name' class must be subclass of '$baseClass'");
+        if (is_array($options)) {
+            $fieldClass = array_shift($options);
+            if ($fieldClass{0} !== '\\') {
+                $fieldClass = __NAMESPACE__ . '\\Field\\' . $fieldClass;
+            }
+            $options['name'] = $name;
+            $options['ownerClass'] = $this->modelClassName;
+            /** @var Field\Base $fieldObj */
+            $fieldObj = new $fieldClass($options);
+            if (!$fieldObj instanceof $baseClass) {
+                throw new \Exception("Field '$name' class must be subclass of '$baseClass'");
+            }
+        } elseif ($options instanceof $baseClass) {
+            $fieldObj = $options;
+            $fieldObj->setOption('name', $name);
+            $fieldObj->setOption('ownerClass', $this->modelClassName);
+        } else {
+            throw new \Exception("Field '$name' \$options must be array or object subclass of '$baseClass'");
         }
         $fieldObj->setMetadata($this);
         $fieldObj->init();
@@ -218,11 +278,25 @@ class Metadata
      */
     public function initFields()
     {
-        foreach ($this->fields as $name => $options) {
+        foreach ($this->fieldsTmp as $name => $options) {
             $this->_addField($name, $options);
         }
-        $this->events()->dispatch(self::EVENT_AFTER_INIT, new Event($this, $this->fields));
-        unset($this->fields);
+        $this->events()->dispatch(self::EVENT_AFTER_INIT, new Event($this, $this->fieldsTmp));
+        unset($this->fieldsTmp);
+    }
+
+    /**
+     * @param array $data
+     * @return array
+     */
+    public function filterData(array $data)
+    {
+        foreach ($data as $key => $value) {
+            if (isset($this->$key)) {
+                $data[$key] = $this->getField($key)->fromDbValue($value);
+            }
+        }
+        return $data;
     }
 
     /**
@@ -231,7 +305,7 @@ class Metadata
      */
     public function getDefaultValues()
     {
-        $result = array();
+        $result = [];
         foreach ($this->_localFields as $name => $fieldObj) {
             $result[$fieldObj->db_column] = $fieldObj->default;
         }
@@ -244,7 +318,7 @@ class Metadata
      */
     public function getRelationFields()
     {
-        $result = array();
+        $result = [];
         foreach ($this->_localFields as $name => $fieldObj) {
             if ($fieldObj->isRelation()) {
                 $result[$fieldObj->db_column] = $fieldObj;
@@ -424,21 +498,9 @@ class Metadata
     public function getDbTableName()
     {
         if ($this->dbTableName === null) {
-            $parts = preg_split('#[\\-]#', $this->modelClassName);
-            $lastPart = array_pop($parts);
-            $name = $this->camelCaseToUnderscore($lastPart) . 's';
-            $this->dbTableName = $name;
+            $this->dbTableName = Inflector::namespacedTableize($this->modelClassName);
         }
         return $this->dbTableName;
-    }
-
-    /**
-     * @param string $value
-     * @return string
-     */
-    public function camelCaseToUnderscore($value)
-    {
-        return strtolower(preg_replace('/([a-z])([A-Z])/', '$1_$2', $value));
     }
 
     /**

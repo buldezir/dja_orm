@@ -7,6 +7,9 @@
 
 namespace Dja\Db\Model\Field;
 
+use Doctrine\DBAL\Schema\Column;
+use Doctrine\DBAL\Types\Type;
+
 /**
  * Class Char
  * @package Dja\Db\Model\Field
@@ -19,6 +22,14 @@ class Char extends Base
     {
         $this->_options['max_length'] = 255;
         parent::__construct($options);
+    }
+
+    /**
+     * @return \Doctrine\DBAL\Schema\Column
+     */
+    public function getDoctrineColumn()
+    {
+        return new Column($this->db_column, Type::getType(Type::STRING));
     }
 
     public function toPhp($value)

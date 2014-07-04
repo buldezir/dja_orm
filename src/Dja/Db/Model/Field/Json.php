@@ -8,6 +8,9 @@
 
 namespace Dja\Db\Model\Field;
 
+use Doctrine\DBAL\Schema\Column;
+use Doctrine\DBAL\Types\Type;
+
 /**
  * Class Json
  * @package Dja\Db\Model\Field
@@ -16,12 +19,20 @@ namespace Dja\Db\Model\Field;
  */
 class Json extends Base
 {
+    /**
+     * @return \Doctrine\DBAL\Schema\Column
+     */
+    public function getDoctrineColumn()
+    {
+        return new Column($this->db_column, Type::getType(Type::JSON_ARRAY));
+    }
+
     public function toPhp($value)
     {
         if (null === $value) {
             return null;
         }
-        return (array) $value;
+        return (array)$value;
     }
 
     public function fromDbValue($value)

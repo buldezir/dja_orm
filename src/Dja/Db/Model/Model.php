@@ -190,12 +190,11 @@ abstract class Model implements \ArrayAccess
                 }*/
                 $this->relationDataCache[$relKey][implode('__', $tmp)] = $value;
             } else {
-                // todo: think about workaround, because method_exists give biiig cpu overhead
                 if ($fastRawSet) {
                     $this->data[$key] = $value;
                 } else {
-                    $setter = 'set' . $this->transformVarName($key);
-                    if (method_exists($this, $setter)) {
+                    $setter = $this->metadata->setterName($key);
+                    if ($setter) {
                         $this->$setter($value);
                     } else {
                         $this->_set($key, $value, true);
@@ -468,8 +467,8 @@ abstract class Model implements \ArrayAccess
      */
     public function __get($name)
     {
-        $getter = 'get' . $this->transformVarName($name);
-        if (method_exists($this, $getter)) {
+        $getter = $this->metadata->getterName($name);
+        if ($getter) {
             return $this->$getter();
         } else {
             return $this->_get($name);
@@ -483,8 +482,8 @@ abstract class Model implements \ArrayAccess
      */
     public function __set($name, $value)
     {
-        $setter = 'set' . $this->transformVarName($name);
-        if (method_exists($this, $setter)) {
+        $setter = $this->metadata->setterName($name);
+        if ($setter) {
             $this->$setter($value);
         } else {
             $this->_set($name, $value);
@@ -619,16 +618,6 @@ abstract class Model implements \ArrayAccess
     public function offsetUnset($offset)
     {
         $this->__unset($offset);
-    }
-
-    /**
-     * under_score to CamelCase
-     * @param string $name
-     * @return string
-     */
-    protected function transformVarName($name)
-    {
-        return implode('', array_map('ucfirst', explode('_', $name)));
     }
 
     /**

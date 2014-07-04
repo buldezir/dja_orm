@@ -7,6 +7,9 @@
 
 namespace Dja\Db\Model\Field;
 
+use Doctrine\DBAL\Schema\Column;
+use Doctrine\DBAL\Types\Type;
+
 /**
  * Class NullBool
  * @package Dja\Db\Model\Field
@@ -15,6 +18,14 @@ namespace Dja\Db\Model\Field;
  */
 class NullBool extends Base
 {
+    /**
+     * @return \Doctrine\DBAL\Schema\Column
+     */
+    public function getDoctrineColumn()
+    {
+        return new Column($this->db_column, Type::getType(Type::BOOLEAN));
+    }
+
     /**
      * @param $value
      * @return bool
