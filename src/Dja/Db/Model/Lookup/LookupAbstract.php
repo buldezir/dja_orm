@@ -6,6 +6,8 @@
  */
 namespace Dja\Db\Model\Lookup;
 
+use Dja\Db\Model\Query\BaseQuerySet;
+
 /**
  * Class LookupAbstract
  * @package Dja\Db\Model\Lookup
@@ -30,7 +32,7 @@ abstract class LookupAbstract
      */
     public static function factory($conn)
     {
-        $className = '\\Dja\\Db\\Model\\Lookup\\'.ucfirst($conn->getDatabasePlatform()->getName());
+        $className = '\\Dja\\Db\\Model\\Lookup\\' . ucfirst($conn->getDatabasePlatform()->getName());
         return new $className($conn);
     }
 
@@ -63,34 +65,40 @@ abstract class LookupAbstract
                 }
                 break;
             case 'contains':
-                $rawValue = '%'.$rawValue.'%';
+                $rawValue = '%' . $rawValue . '%';
                 break;
             case 'icontains':
-                $rawValue = '%'.$rawValue.'%';
+                $rawValue = '%' . $rawValue . '%';
                 break;
             case 'startswith':
-                $rawValue = $rawValue.'%';
+                $rawValue = $rawValue . '%';
                 break;
             case 'endswith':
-                $rawValue = '%'.$rawValue;
+                $rawValue = '%' . $rawValue;
                 break;
             case 'istartswith':
-                $rawValue = $rawValue.'%';
+                $rawValue = $rawValue . '%';
                 break;
             case 'iendswith':
-                $rawValue = '%'.$rawValue;
+                $rawValue = '%' . $rawValue;
                 break;
             case 'iexact':
-                $escapedField = 'lower('.$escapedField.')';
+                $escapedField = 'lower(' . $escapedField . ')';
                 $rawValue = strtolower($rawValue);
                 break;
             case 'raw':
                 $rawValue = sprintf($rawValue, $escapedField);
                 $escapedField = '';
                 break;
+            case 'range':
+                if (!is_array($rawValue) || count($rawValue) !== 2) {
+                    throw new \InvalidArgumentException("value for RANGE lookup must me array with two elements");
+                }
+                $rawValue = Expr($this->db->quote($rawValue[0]) . ' AND ' . $this->db->quote($rawValue[1]));
+                break;
             case 'in':
-                if (!is_array($rawValue) && !$rawValue instanceof \Dja\Db\Model\Expr) {
-                    throw new \InvalidArgumentException("value for IN lookup must me array or Expr");
+                if (!is_array($rawValue) && !$rawValue instanceof \Dja\Db\Model\Expr && !$rawValue instanceof BaseQuerySet) {
+                    throw new \InvalidArgumentException("value for IN lookup must me array or QuerySet or Expr");
                 }
                 if (is_array($rawValue)) {
                     $rawValue = array_map('intval', $rawValue);
@@ -116,7 +124,7 @@ abstract class LookupAbstract
             }
         }
         if ($negate) {
-            $escapedField = 'NOT '.$escapedField;
+            $escapedField = 'NOT ' . $escapedField;
         }
         $lookup = $this->operators[$op];
         //$lookup = $negate ? 'NOT '.$this->operators[$op] : $this->operators[$op];

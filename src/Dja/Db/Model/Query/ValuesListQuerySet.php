@@ -59,30 +59,32 @@ class ValuesListQuerySet extends ValuesQuerySet
                 $this->qb->leftJoin($this->qi($joinData['selfAlias']), $this->qi($joinData['joinTable']), $this->qi($joinData['joinAlias']), $joinData['on']);
             }
 
-            if (null === $this->selectKeyField) {
-                $selectKeyField = $this->metadata->getField('pk');
+            if (false !== $this->selectKeyField) {
+                if (null === $this->selectKeyField) {
+                    $selectKeyField = $this->metadata->getField('pk');
+                } else {
+                    $selectKeyField = $this->metadata->findField($this->selectKeyField);
+                }
+                if (isset($this->relatedSelectCols[$this->selectKeyField])) {
+                    $this->qb->addSelect($this->qi($this->relatedSelectCols[$this->selectKeyField]));
+                } else {
+                    $this->qb->addSelect($this->qi('t.' . $selectKeyField->db_column));
+                }
+                $this->keyDataMapper = function ($row) use ($selectKeyField) {
+                    return $selectKeyField->fromDbValue($row[0]);
+                };
             } else {
-                $selectKeyField = $this->metadata->findField($this->selectKeyField);
+                $this->keyDataMapper = null;
             }
-            $selectValueField = $this->metadata->findField($this->selectValueField);
 
-            if (isset($this->relatedSelectCols[$this->selectKeyField])) {
-                $this->qb->addSelect($this->qi($this->relatedSelectCols[$this->selectKeyField]));
-            } else {
-                $this->qb->addSelect($this->qi('t.' . $selectKeyField->db_column));
-            }
+            $selectValueField = $this->metadata->findField($this->selectValueField);
             if (isset($this->relatedSelectCols[$this->selectValueField])) {
                 $this->qb->addSelect($this->relatedSelectCols[$this->selectValueField]);
             } else {
                 $this->qb->addSelect($this->qi('t.' . $selectValueField->db_column));
             }
-
             $this->rowDataMapper = function ($row) use ($selectValueField) {
                 return $selectValueField->fromDbValue($row[1]);
-            };
-
-            $this->keyDataMapper = function ($row) use ($selectKeyField) {
-                return $selectKeyField->fromDbValue($row[0]);
             };
 
             $this->queryStringCache = $this->qb->getSQL();
@@ -90,9 +92,16 @@ class ValuesListQuerySet extends ValuesQuerySet
         return $this->queryStringCache;
     }
 
+    /**
+     * @return int|mixed
+     */
     public function key()
     {
-        $mapper = $this->keyDataMapper;
-        return $mapper($this->currentFetchedRow);
+        if (null !== $this->keyDataMapper) {
+            $mapper = $this->keyDataMapper;
+            return $mapper($this->currentFetchedRow);
+        } else {
+            return parent::key();
+        }
     }
 }

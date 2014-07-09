@@ -29,6 +29,7 @@ class Postgresql extends LookupAbstract
         'istartswith' => 'LIKE %s',
         'iendswith' => 'LIKE %s',
         'raw' => '%s',
+        'range' => 'BETWEEN %s',
     );
 
     protected function udtNameToFieldType($v)
