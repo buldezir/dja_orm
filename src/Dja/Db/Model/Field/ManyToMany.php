@@ -94,7 +94,7 @@ class ManyToMany extends Relation implements ManyToManyRelation
         $throughClass = $this->throughClass;
 
         if ($throughClass) {
-            $in = $throughClass::objects()->filter([$this->self_field => $model->__get($this->self_field)])->valuesList($this->to_field);
+            $in = $throughClass::objects()->filter([$this->self_field => $model->__get($this->self_field)])->valuesList($this->to_field, false);
         } else {
             $sql = sprintf('SELECT "%s" FROM "%s" WHERE "%s" = %d', $this->to_field, $this->db_table, $this->self_field, $model->__get($this->self_field));
             //$in = $relationClass::objects()->setRawSql($sql)->valuesDict($this->to_field, $this->to_field);

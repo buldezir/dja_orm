@@ -46,7 +46,7 @@ class ManyToOne extends Relation implements ManyRelation
 
     /**
      * @param \Dja\Db\Model\Model $model
-     * @return \Dja\Db\Model\Query
+     * @return \ArrayIterator|\Dja\Db\Model\Query\QuerySet
      */
     public function getRelation(\Dja\Db\Model\Model $model)
     {
@@ -55,7 +55,8 @@ class ManyToOne extends Relation implements ManyRelation
         $selfField = $this->self_field;
         $value = $model->$selfField;
         if (!empty($value)) {
-            $inst = $relationClass::objects()->setRelation([$this, $model])->filter([$this->to_field => (int)$value]);
+            //$inst = $relationClass::objects()->setRelation([$this, $model])->filter([$this->to_field => (int)$value]);
+            $inst = $relationClass::objects()->filter([$this->to_field => (int)$value]);
             return $inst;
         } else {
             return new \ArrayIterator();

@@ -7,6 +7,9 @@
 
 namespace Dja\Db\Model\Field;
 
+use Doctrine\DBAL\Schema\Column;
+use Doctrine\DBAL\Types\Type;
+
 /**
  * Class DateTime
  * @package Dja\Db\Model\Field
@@ -28,6 +31,15 @@ class DateTime extends Base
 
         parent::__construct($options);
     }
+
+    /**
+     * @return \Doctrine\DBAL\Schema\Column
+     */
+    public function getDoctrineColumn()
+    {
+        return new Column($this->db_column, Type::getType(Type::DATETIME));
+    }
+
 
     public function init()
     {

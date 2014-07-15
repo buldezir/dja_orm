@@ -6,6 +6,7 @@
  */
 
 namespace Dja\Db\Model\Query;
+use Dja\Db\Model\Model;
 
 /**
  * just abstraction for avoid duplicate code
@@ -88,7 +89,7 @@ abstract class DataIterator implements \Countable, \Iterator
     }
 
     /**
-     * @return mixed|null
+     * @return Model|mixed
      */
     public function current()
     {

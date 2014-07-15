@@ -146,13 +146,24 @@ class Metadata
     protected function collectConfig(\ReflectionClass $refl)
     {
         if ($refl->hasMethod('config')) {
-            $confMethod = $refl->getMethod('config');
-            $conf = $confMethod->invoke(null);
+            $conf = $refl->getMethod('config')->invoke(null);
             if (!isset($conf['fields'])) {
                 throw new \UnderflowException('U must declare "fields" in config');
             }
             $this->fieldsTmp = $conf['fields'];
             $this->dbTableName = isset($conf['dbtable']) ? $conf['dbtable'] : null;
+            if (isset($conf['events'])) {
+                $checkEvents = [
+                    static::EVENT_AFTER_CONFIG,
+                    static::EVENT_AFTER_INIT,
+                    static::EVENT_AFTER_ADD,
+                ];
+                foreach ($checkEvents as $ev) {
+                    if (isset($conf['events'][$ev])) {
+                        $this->events()->addListener($ev, $conf['events'][$ev]);
+                    }
+                }
+            }
         } else {
             $staticProps = $refl->getStaticProperties();
             if (empty($staticProps['fields'])) {
@@ -199,6 +210,18 @@ class Metadata
     public function addField($name, array $options)
     {
         $this->_addField($name, $options);
+        return $this;
+    }
+
+    /**
+     * @param $name
+     * @return $this
+     */
+    public function removeField($name)
+    {
+        $f = $this->getField($name);
+        unset($this->_allFields[$name], $this->_localFields[$name], $this->_many2manyFields[$name], $this->_virtualFields[$name]);
+        unset($this->_allFields[$f->db_column], $this->_localFields[$f->db_column], $this->_many2manyFields[$f->db_column], $this->_virtualFields[$f->db_column]);
         return $this;
     }
 

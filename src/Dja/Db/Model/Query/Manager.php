@@ -8,6 +8,7 @@
 namespace Dja\Db\Model\Query;
 
 use Dja\Db\Model\Metadata;
+use Dja\Db\Model\Model;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Query\Query;
 
@@ -73,7 +74,7 @@ class Manager
 
     /**
      * @param int|array $arguments
-     * @return \Dja\Db\Model\Model
+     * @return Model
      */
     public function get($arguments)
     {
@@ -82,7 +83,7 @@ class Manager
 
     /**
      * @param array $arguments
-     * @return \Dja\Db\Model\Model
+     * @return Model
      */
     public function getOrCreate(array $arguments)
     {
@@ -90,7 +91,7 @@ class Manager
     }
 
     /**
-     * @return QuerySet
+     * @return QuerySet|Model[]
      */
     public function all()
     {
@@ -99,7 +100,7 @@ class Manager
 
     /**
      * @param array $arguments
-     * @return QuerySet
+     * @return QuerySet|Model[]
      */
     public function selectRelated(array $arguments)
     {
@@ -107,26 +108,26 @@ class Manager
     }
 
     /**
-     * @param array $arguments
-     * @return QuerySet
+     * @param array|QueryPart $arguments
+     * @return QuerySet|Model[]
      */
-    public function exclude(array $arguments)
+    public function exclude($arguments)
     {
         return $this->getQuerySet()->exclude($arguments);
     }
 
     /**
-     * @param array $arguments
-     * @return QuerySet
+     * @param array|QueryPart $arguments
+     * @return QuerySet|Model[]
      */
-    public function filter(array $arguments)
+    public function filter($arguments)
     {
         return $this->getQuerySet()->filter($arguments);
     }
 
     /**
      * @param array $arguments
-     * @return QuerySet
+     * @return QuerySet|Model[]
      */
     public function order(array $arguments)
     {
@@ -136,7 +137,7 @@ class Manager
     /**
      * @param $limit
      * @param null $offset
-     * @return QuerySet
+     * @return QuerySet|Model[]
      */
     public function limit($limit, $offset = null)
     {

@@ -10,6 +10,7 @@ namespace Dja\Db\Model\Query;
 use Dja\Db\Model\Metadata;
 use Dja\Db\Model\Model;
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\Query\Expression\CompositeExpression;
 use Doctrine\DBAL\Query\QueryBuilder;
 
 /**
@@ -102,7 +103,7 @@ abstract class BaseQuerySet extends DataIterator implements \ArrayAccess
      * filter -> selectRelated(['field_name1', 'field_name2'])
      * no arguments for join all, or related field names, or single int arg = joinMaxDepth
      * @param array $arguments
-     * @return $this
+     * @return $this|Model[]
      */
     public function selectRelated(array $arguments)
     {
@@ -117,41 +118,31 @@ abstract class BaseQuerySet extends DataIterator implements \ArrayAccess
 
     /**
      * where NOT *
-     * @param array|string $arguments
-     * @return $this
+     * @param array|QueryPart $arguments
+     * @return $this|Model[]
      * @throws \InvalidArgumentException
      */
-    public function exclude(array $arguments)
+    public function exclude($arguments)
     {
-        $arguments = $this->explaneArguments($arguments, true);
-        $copy = clone $this;
-        foreach ($arguments as $cond) {
-            $copy->_qb()->andWhere($cond);
-        }
-        return $copy;
+        return $this->applyFilterLogic($arguments, true);
     }
 
     /**
      * where *
-     * @param $arguments
-     * @return $this
+     * @param array|QueryPart $arguments
+     * @return $this|Model[]
      * @throws \InvalidArgumentException
      */
-    public function filter(array $arguments)
+    public function filter($arguments)
     {
-        $arguments = $this->explaneArguments($arguments);
-        $copy = clone $this;
-        foreach ($arguments as $cond) {
-            $copy->_qb()->andWhere($cond);
-        }
-        return $copy;
+        return $this->applyFilterLogic($arguments);
     }
 
     /**
      * set Order By part for query
      * @param array $arguments
      * @throws \DomainException
-     * @return $this
+     * @return $this|Model[]
      */
     public function order(array $arguments)
     {
@@ -182,7 +173,7 @@ abstract class BaseQuerySet extends DataIterator implements \ArrayAccess
     /**
      * @param $limit
      * @param null $offset
-     * @return $this
+     * @return $this|Model[]
      */
     public function limit($limit, $offset = null)
     {
@@ -194,7 +185,7 @@ abstract class BaseQuerySet extends DataIterator implements \ArrayAccess
     /**
      * @param int $curPage
      * @param int $itemsPerPage
-     * @return $this
+     * @return $this|Model[]
      */
     public function byPage($curPage, $itemsPerPage = 50)
     {
@@ -224,7 +215,7 @@ abstract class BaseQuerySet extends DataIterator implements \ArrayAccess
 
     /**
      * @param $arguments
-     * @return \Dja\Db\Model\Model
+     * @return Model
      * @throws \InvalidArgumentException
      * @throws \RuntimeException
      */
@@ -263,7 +254,7 @@ abstract class BaseQuerySet extends DataIterator implements \ArrayAccess
      * [offset] -> [offset:1]->current()
      * @param mixed $key
      * @throws \InvalidArgumentException
-     * @return $this|Model
+     * @return $this|Model|Model[]
      */
     public function offsetGet($key)
     {
@@ -337,6 +328,36 @@ abstract class BaseQuerySet extends DataIterator implements \ArrayAccess
                 $this->relatedSelectCols[$underscoreName] = $selectAlias;
             }
         }
+    }
+
+    /**
+     * DOES NOT support nested expressions !!!
+     * @param array|QueryPart $arguments
+     * @param bool $negate
+     * @return BaseQuerySet
+     * @throws \InvalidArgumentException
+     */
+    protected function applyFilterLogic($arguments, $negate = false)
+    {
+        if (is_array($arguments)) {
+            $arguments = QueryPart::_AND($arguments);
+        } elseif (!$arguments instanceof QueryPart) {
+            throw new \InvalidArgumentException("arguments must be array or instance of QueryPart");
+        }
+        $argumentsArray = $this->explaneArguments($arguments->getArguments(), $negate);
+        $copy = clone $this;
+        $expr = new CompositeExpression($arguments->getType(), $argumentsArray);
+        switch ($arguments->getType()) {
+            case QueryPart::TYPE_AND:
+                $copy->_qb()->andWhere($expr);
+                break;
+            case QueryPart::TYPE_OR:
+                $copy->_qb()->orWhere($expr);
+                break;
+            default:
+                break;
+        }
+        return $copy;
     }
 
     /**

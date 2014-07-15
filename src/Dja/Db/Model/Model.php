@@ -497,7 +497,7 @@ abstract class Model implements \ArrayAccess
      */
     public function __isset($name)
     {
-        return isset($this->metadata->$name);
+        return isset($this->metadata->$name) && isset($this->$name);
     }
 
     /**
