@@ -20,6 +20,8 @@ use Dja\Db\Model\Metadata;
  * @property bool $unique
  * @property array $choices
  * @property int $max_length
+ * @property int $precision
+ * @property int $scale
  * @property
  *
  * @property \Dja\Db\Model\Model $ownerClass
@@ -38,6 +40,8 @@ abstract class Base
         'db_column' => null,
         'db_index' => false,
         'max_length' => null,
+        'precision' => null, // number of digits in integer or to the left of the decimal point
+        'scale' => null, // number of digits to the right of the decimal point
         'blank' => true,
         'null' => false,
         'unique' => false,

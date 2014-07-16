@@ -1,12 +1,9 @@
 <?php
-/**
- * User: Alexander.Arutyunov
- * Date: 04.12.13
- * Time: 14:38
- */
-
 
 namespace Dja\Db\Model\Field;
+
+use Doctrine\DBAL\Schema\Column;
+use Doctrine\DBAL\Types\Type;
 
 /**
  * Class Time
@@ -21,4 +18,12 @@ class Time extends DateTime
 {
     protected $re = '#^\d{2}:\d{2}:\d{2}$#';
     protected $format = 'H:i:s';
+
+    /**
+     * @return \Doctrine\DBAL\Schema\Column
+     */
+    public function getDoctrineColumn()
+    {
+        return new Column($this->db_column, Type::getType(Type::TIME));
+    }
 }

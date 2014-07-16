@@ -37,16 +37,25 @@ class ManyToMany extends Relation implements ManyToManyRelation
             throw new \Exception('"to_field" is required option for Dja\\Db\\Model\\Field\\ManyToOne');
             // may be it shoud be set equal to pk field name
         }*/
+    }
+
+    /**
+     * @return null
+     */
+    public function getDoctrineColumn()
+    {
+        return null;
+    }
+
+    public function init()
+    {
         if ($this->limit_choices_to !== null && !is_array($this->limit_choices_to)) {
             throw new \Exception('"limit_choices_to" must be argument array for model::objects()->filter()');
         }
         if (!$this->throughClass && !$this->db_table) {
             throw new \Exception('Must provide "throughClass" or "db_table" option');
         }
-    }
 
-    public function init()
-    {
         if ($this->to_field === null) {
             $this->setOption('to_field', $this->getRelationMetadata()->getPrimaryKey());
         }

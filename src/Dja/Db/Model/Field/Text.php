@@ -1,11 +1,9 @@
 <?php
-/**
- * User: Alexander.Arutyunov
- * Date: 19.11.13
- * Time: 17:29
- */
 
 namespace Dja\Db\Model\Field;
+
+use Doctrine\DBAL\Schema\Column;
+use Doctrine\DBAL\Types\Type;
 
 /**
  * Class Text
@@ -18,6 +16,14 @@ class Text extends Char
     public function toPhp($value)
     {
         return strval($value);
+    }
+
+    /**
+     * @return \Doctrine\DBAL\Schema\Column
+     */
+    public function getDoctrineColumn()
+    {
+        return new Column($this->db_column, Type::getType(Type::TEXT));
     }
 
     public function validate($value)

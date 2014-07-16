@@ -38,18 +38,52 @@ class Creation
 
     /**
      * @param \Doctrine\DBAL\Connection $db
+     * @param array $generateQueue
      */
-    public function __construct(\Doctrine\DBAL\Connection $db)
+    public function __construct(\Doctrine\DBAL\Connection $db, $generateQueue = [])
     {
         $this->db = $db;
         $this->dp = $db->getDatabasePlatform();
+        $this->generateQueue = $generateQueue;
+    }
+
+    /**
+     * ->processQueueCallback(function (\Dja\Db\Model\Metadata $metadata, \Doctrine\DBAL\Schema\Table $table, array $sql, \Doctrine\DBAL\Connection $db) {})
+     * @param callable $callBack
+     * @param bool $autoExecute
+     */
+    public function processQueueCallback(\Closure $callBack, $autoExecute = false)
+    {
+        $autoExecQueue = [];
+        while (count($this->generateQueue)) {
+            $modelName = array_shift($this->generateQueue);
+            try {
+                /** @var Metadata $metadata */
+                $metadata = $modelName::metadata();
+                if ($this->db->getSchemaManager()->tablesExist($metadata->getDbTableName())) {
+                    continue;
+                }
+                $table = $this->metadataToTable($metadata);
+                $sql = $this->dp->getCreateTableSQL($table, AbstractPlatform::CREATE_INDEXES | AbstractPlatform::CREATE_FOREIGNKEYS);
+                if ($autoExecute) {
+                    $autoExecQueue = array_merge($sql, $autoExecQueue);
+                }
+                $callBack($metadata, $table, $sql, $this->db);
+            } catch (\Exception $e) {
+            }
+        }
+        if ($autoExecute) {
+            foreach ($autoExecQueue as $sql) {
+                $this->db->exec($sql);
+            }
+        }
     }
 
     /**
      * @param Metadata $metadata
      * @return Table
      */
-    protected function metadataToTable(Metadata $metadata)
+    public function metadataToTable(Metadata $metadata)
     {
         $tblName = $metadata->getDbTableName();
         if (isset($this->generated[$tblName])) {
@@ -75,34 +109,14 @@ class Creation
             if ($fieldObj->primary_key) {
                 $table->setPrimaryKey([$fieldObj->db_column]);
             }
-            if ($fieldObj->isRelation() && $fieldObj instanceof ForeignKey) {
+            if ($this->followRelations === true && $fieldObj->isRelation() && $fieldObj instanceof ForeignKey) {
                 $relationClass = $fieldObj->relationClass;
                 $relactionTable = $this->metadataToTable($relationClass::metadata());
                 $table->addForeignKeyConstraint($relactionTable, [$fieldObj->db_column], [$fieldObj->to_field]);
+                $this->generateQueue[] = $relationClass;
             }
         }
         return $table;
-    }
-
-    public function generateDbForModel($modelName)
-    {
-        /** @var Metadata $metadata */
-        $metadata = $modelName::metadata();
-
-        $tblName = $metadata->getDbTableName();
-//        if ($this->db->getSchemaManager()->tablesExist($tblName)) {
-//            throw new \LogicException(sprintf('table "%s" already exist', $tblName));
-//        }
-
-        $this->metadataToTable($metadata);
-
-        //$this->db->getSchemaManager()->createTable($table);
-
-        $strings = [];
-        foreach ($this->generated as $table) {
-            $strings = array_merge($strings, $this->dp->getCreateTableSQL($table, AbstractPlatform::CREATE_INDEXES | AbstractPlatform::CREATE_FOREIGNKEYS));
-        }
-        return $strings;
     }
 
     /**

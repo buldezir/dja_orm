@@ -1,9 +1,4 @@
 <?php
-/**
- * User: Alexander.Arutyunov
- * Date: 12.07.13
- * Time: 13:11
- */
 
 namespace Dja\Db\Model\Field;
 

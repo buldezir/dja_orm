@@ -22,11 +22,6 @@ class ManyToOne extends Relation implements ManyRelation
 
         $this->setOption('db_column', false);
         $this->setOption('editable', false);
-
-        if (!$this->to_field) {
-            throw new \Exception('"to_field" is required option for Dja\\Db\\Model\\Field\\ManyToOne');
-            // may be it shoud be set equal to pk field name
-        }
     }
 
     /**
@@ -39,6 +34,11 @@ class ManyToOne extends Relation implements ManyRelation
 
     public function init()
     {
+        if (!$this->to_field) {
+            throw new \Exception('"to_field" is required option for Dja\\Db\\Model\\Field\\ManyToOne');
+            // may be it shoud be set equal to pk field name
+        }
+
         if ($this->self_field === null) {
             $this->setOption('self_field', $this->metadata->getPrimaryKey());
         }

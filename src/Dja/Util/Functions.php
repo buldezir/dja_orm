@@ -311,7 +311,7 @@ function collectModels()
     $allClasses = get_declared_classes();
     foreach ($allClasses as $className) {
         $refl = new \ReflectionClass($className);
-        if ($refl->isSubclassOf('\\Dja\\Db\\Model\\Model') && !$refl->hasProperty('isProxy')) {
+        if ($refl->isSubclassOf('\\Dja\\Db\\Model\\Model') && !$refl->isAbstract()) {
             $result[] = $className;
         }
     }

@@ -6,14 +6,13 @@ use Doctrine\DBAL\Schema\Column;
 use Doctrine\DBAL\Types\Type;
 
 /**
- * Class Float
+ * Class Decimal
  * @package Dja\Db\Model\Field
  */
-class Float extends Base
+class Decimal extends Base
 {
     public function __construct(array $options = array())
     {
-        $this->_options['precision'] = 10;
         parent::__construct($options);
     }
 
@@ -22,7 +21,15 @@ class Float extends Base
      */
     public function getDoctrineColumn()
     {
-        return new Column($this->db_column, Type::getType(Type::FLOAT));
+        return new Column($this->db_column, Type::getType(Type::DECIMAL), ['precision' => $this->precision, 'scale' => $this->scale]);
+    }
+
+    public function init()
+    {
+        if (!$this->precision || !$this->scale) {
+            throw new \Exception('Must provide "precision" and "scale" option');
+        }
+        parent::init();
     }
 
     public function toPhp($value)
@@ -37,7 +44,7 @@ class Float extends Base
     {
         parent::validate($value);
         if (!is_float($value)) {
-            throw new \InvalidArgumentException("Field '{$this->name}' must be float");
+            throw new \InvalidArgumentException("Field '{$this->name}' must be float/decimal");
         }
     }
 }

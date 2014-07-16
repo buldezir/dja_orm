@@ -19,7 +19,7 @@ class Int extends Base
 {
     public function __construct(array $options = array())
     {
-        $this->_options['max_length'] = 10;
+        $this->_options['precision'] = 10;
         parent::__construct($options);
     }
 
@@ -29,16 +29,16 @@ class Int extends Base
     public function getDoctrineColumn()
     {
         $type = Type::INTEGER;
-        if ($this->max_length <= 19) {
+        if ($this->precision <= 19) {
             $type = Type::BIGINT;
         }
-        if ($this->max_length <= 10) {
+        if ($this->precision <= 10) {
             $type = Type::INTEGER;
         }
-        if ($this->max_length <= 5) {
+        if ($this->precision <= 5) {
             $type = Type::SMALLINT;
         }
-        return new Column($this->db_column, Type::getType($type));
+        return new Column($this->db_column, Type::getType($type), ['precision' => $this->precision]);
     }
 
 
