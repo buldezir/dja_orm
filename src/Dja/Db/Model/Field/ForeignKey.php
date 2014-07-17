@@ -41,6 +41,11 @@ class ForeignKey extends Relation implements SingleRelation
         return new Column($this->db_column, Type::getType($type), ['precision' => $this->precision]);
     }
 
+    public function getPhpType()
+    {
+        return 'integer|\Dja\Db\Model\Model';
+    }
+
     public function init()
     {
         if ($this->to_field === null) {
@@ -69,7 +74,7 @@ class ForeignKey extends Relation implements SingleRelation
             'ManyToOne',
             'relationClass' => $ownerClass,
             'self_field' => $this->to_field,
-            'to_field' => $this->db_column,
+            'to_field' => $this->name,
             'noBackwards' => true,
         );
         $relationClass::metadata()->addField($this->related_name, $options);

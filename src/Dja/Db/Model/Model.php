@@ -2,6 +2,7 @@
 
 namespace Dja\Db\Model;
 
+use Dja\Db\Model\Field\Relation;
 use Dja\Db\Model\Query\Manager;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\EventDispatcher\GenericEvent as Event;
@@ -211,7 +212,7 @@ abstract class Model implements \ArrayAccess
      * @param Field\Relation $field
      * @return Model|\Dja\Db\Model\Query\QuerySet
      */
-    protected function getLazyRelation(\Dja\Db\Model\Field\Relation $field)
+    protected function getLazyRelation(Relation $field)
     {
         $name = $field->name;
         if (!array_key_exists($name, $this->relationDataCache)) {
@@ -324,7 +325,11 @@ abstract class Model implements \ArrayAccess
         }
         if ($this->eventDispatch(self::EVENT_BEFORE_SAVE)) {
             if ($this->isNewRecord) {
-                $newPK = static::objects()->doInsert($this->toArray());
+                $data = $this->toArray();
+                if ($this->metadata->pk->auto_increment) {
+                    unset($data[$this->metadata->pk->db_column]);
+                }
+                $newPK = static::objects()->doInsert($data);
                 $this->data[$this->metadata->pk->db_column] = $newPK;
                 if (empty($newPK)) {
                     $this->isPersistable = false;
@@ -422,11 +427,13 @@ abstract class Model implements \ArrayAccess
         if ($this->metadata->isLocal($name)) {
             return isset($this->data[$name]) ? $this->data[$name] : null;
         } elseif ($this->metadata->isVirtual($name)) {
-            if ($field->isRelation()) {
+            if ($field instanceof Relation) {
                 return $this->getLazyRelation($field);
             } else {
                 return isset($this->data[$field->db_column]) ? $this->data[$field->db_column] : null;
             }
+        } else {
+            return isset($this->data[$name]) ? $this->data[$name] : null;
         }
     }
 
@@ -497,7 +504,7 @@ abstract class Model implements \ArrayAccess
      */
     public function __isset($name)
     {
-        return isset($this->metadata->$name) && isset($this->$name);
+        return isset($this->metadata->$name) && $this->$name !== null;
     }
 
     /**
@@ -524,10 +531,10 @@ abstract class Model implements \ArrayAccess
                     if (isset($this->relationDataCache[$k])) {
                         $result[$k] = $this->getLazyRelation($field)->toArray($depth - 1);
                     } else {
-                        $result[$k] = $this->data[$field->db_column];
+                        $result[$k] = isset($this->data[$field->db_column]) ? $this->data[$field->db_column] : null;
                     }
                 } else {
-                    $result[$k] = $this->data[$field->db_column];
+                    $result[$field->db_column] = isset($this->data[$field->db_column]) ? $this->data[$field->db_column] : null;
                 }
             } else {
                 $result[$k] = $this->__get($k);

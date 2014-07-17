@@ -18,6 +18,7 @@ use Dja\Db\Model\Metadata;
  * @property string $db_column
  * @property bool $null
  * @property bool $unique
+ * @property bool $editable
  * @property array $choices
  * @property int $max_length
  * @property int $precision
@@ -77,6 +78,14 @@ abstract class Base
      * @return \Doctrine\DBAL\Schema\Column
      */
     abstract public function getDoctrineColumn();
+
+    /**
+     * @return string
+     */
+    public function getPhpType()
+    {
+        return 'mixed';
+    }
 
     /**
      * for overriding

@@ -24,6 +24,11 @@ class Decimal extends Base
         return new Column($this->db_column, Type::getType(Type::DECIMAL), ['precision' => $this->precision, 'scale' => $this->scale]);
     }
 
+    public function getPhpType()
+    {
+        return 'float';
+    }
+
     public function init()
     {
         if (!$this->precision || !$this->scale) {

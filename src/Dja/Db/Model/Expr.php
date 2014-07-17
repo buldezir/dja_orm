@@ -1,10 +1,11 @@
 <?php
-/**
- * User: Alexander.Arutyunov
- */
 
 namespace Dja\Db\Model;
 
+/**
+ * Class Expr
+ * @package Dja\Db\Model
+ */
 class Expr
 {
     public $value;

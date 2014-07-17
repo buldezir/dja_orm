@@ -1,13 +1,11 @@
 <?php
-/**
- * User: Alexander.Arutyunov
- * Date: 11.07.13
- * Time: 14:16
- */
 
 namespace Dja\Db\Model\Lookup;
 
-
+/**
+ * Class Postgresql
+ * @package Dja\Db\Model\Lookup
+ */
 class Postgresql extends LookupAbstract
 {
     protected $operators = array(

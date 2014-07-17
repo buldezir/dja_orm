@@ -447,6 +447,19 @@ class Metadata
     }
 
     /**
+     * @return string
+     */
+    public function getFieldsPhpDoc()
+    {
+        $result = '/**' . PHP_EOL;
+        foreach ($this->_allFields as $alias => $fObj) {
+            $result .= ' * @property ' . $fObj->getPhpType() . ' $' . $alias . PHP_EOL;
+        }
+        $result .= ' */';
+        return $result;
+    }
+
+    /**
      * @param Field\Base $field
      * @return bool
      */

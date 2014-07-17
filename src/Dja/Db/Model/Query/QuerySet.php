@@ -1,11 +1,9 @@
 <?php
-/**
- * User: Alexander.Arutyunov
- * Date: 15.01.14
- * Time: 14:07
- */
 
 namespace Dja\Db\Model\Query;
+
+use Dja\Db\Model\Field\Relation;
+use Dja\Db\Model\Model;
 
 /**
  * Class QuerySet
@@ -22,7 +20,8 @@ class QuerySet extends BaseQuerySet
     {
         $dataReady = [];
         foreach ($data as $key => $value) {
-            $dataReady[$this->qi($key)] = $this->qv($this->metadata->getField($key)->dbPrepValue($value));
+            //$dataReady[$this->qi($key)] = $this->qv($this->metadata->getField($key)->dbPrepValue($value));
+            $dataReady[$this->qi($key)] = $this->metadata->getField($key)->dbPrepValue($value);
         }
         $this->db->insert($this->qi($this->metadata->getDbTableName()), $dataReady);
         return $this->db->lastInsertId();
@@ -105,6 +104,22 @@ class QuerySet extends BaseQuerySet
     public function valuesList($valueField, $keyField = null)
     {
         $qs = new ValuesListQuerySet($this->metadata, $this->qb, $this->db, $keyField, $valueField);
+        if ($this->joinMaxDepth) {
+            $qs->_setJoinDepth($this->joinMaxDepth);
+        } elseif (!empty($this->relatedSelectFields)) {
+            $qs->_addRelatedSelectFields($this->relatedSelectFields);
+        }
+        return $qs;
+    }
+
+    /**
+     * @param Model $ownerModel
+     * @param Relation $ownerField
+     * @return RelationQuerySet
+     */
+    public function relation(Model $ownerModel, Relation $ownerField)
+    {
+        $qs = new RelationQuerySet($this->metadata, $this->qb, $this->db, $ownerModel, $ownerField);
         if ($this->joinMaxDepth) {
             $qs->_setJoinDepth($this->joinMaxDepth);
         } elseif (!empty($this->relatedSelectFields)) {

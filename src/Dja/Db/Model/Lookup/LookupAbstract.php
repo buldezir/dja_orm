@@ -1,9 +1,5 @@
 <?php
-/**
- * User: Alexander.Arutyunov
- * Date: 11.07.13
- * Time: 14:09
- */
+
 namespace Dja\Db\Model\Lookup;
 
 use Dja\Db\Model\Query\BaseQuerySet;

@@ -32,6 +32,11 @@ class ManyToOne extends Relation implements ManyRelation
         return null;
     }
 
+    public function getPhpType()
+    {
+        return '\Dja\Db\Model\Query\RelationQuerySet|\Dja\Db\Model\Model[]';
+    }
+
     public function init()
     {
         if (!$this->to_field) {
@@ -55,8 +60,7 @@ class ManyToOne extends Relation implements ManyRelation
         $selfField = $this->self_field;
         $value = $model->$selfField;
         if (!empty($value)) {
-            //$inst = $relationClass::objects()->setRelation([$this, $model])->filter([$this->to_field => (int)$value]);
-            $inst = $relationClass::objects()->filter([$this->to_field => (int)$value]);
+            $inst = $relationClass::objects()->relation($model, $this)->filter([$this->to_field => (int)$value]);
             return $inst;
         } else {
             return new \ArrayIterator();

@@ -1,9 +1,4 @@
 <?php
-/**
- * User: Alexander.Arutyunov
- * Date: 12.11.13
- * Time: 11:36
- */
 
 namespace Dja\Db\Model\Field;
 
@@ -31,7 +26,7 @@ class Email extends Char
     {
         parent::validate($value);
         if (!filter_var($value, FILTER_VALIDATE_EMAIL)) {
-        //if (!preg_match($this->re, $value)) {
+            //if (!preg_match($this->re, $value)) {
             throw new \InvalidArgumentException("Field '{$this->name}' must be in valid email format");
         }
     }

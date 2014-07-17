@@ -1,12 +1,11 @@
 <?php
-/**
- * User: Alexander.Arutyunov
- * Date: 01.08.13
- * Time: 15:46
- */
 
 namespace Dja\Db\Model\Field;
 
+/**
+ * Class OneToOne
+ * @package Dja\Db\Model\Field
+ */
 class OneToOne extends ForeignKey implements SingleRelation
 {
     public function init()

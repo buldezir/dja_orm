@@ -27,6 +27,11 @@ class Char extends Base
         return new Column($this->db_column, Type::getType(Type::STRING));
     }
 
+    public function getPhpType()
+    {
+        return 'string';
+    }
+
     public function toPhp($value)
     {
         return strval($value);

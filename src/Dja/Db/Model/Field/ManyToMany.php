@@ -47,6 +47,11 @@ class ManyToMany extends Relation implements ManyToManyRelation
         return null;
     }
 
+    public function getPhpType()
+    {
+        return '\Dja\Db\Model\Query\RelationQuerySet|\Dja\Db\Model\Model[]';
+    }
+
     public function init()
     {
         if ($this->limit_choices_to !== null && !is_array($this->limit_choices_to)) {
@@ -114,9 +119,9 @@ class ManyToMany extends Relation implements ManyToManyRelation
         if ($this->limit_choices_to) {
             $filter = $this->limit_choices_to;
             $filter[$this->to_field . '__in'] = $in;
-            return $relationClass::objects()->filter($filter);
+            return $relationClass::objects()->relation($model, $this)->filter($filter);
         } else {
-            return $relationClass::objects()->filter([$this->to_field . '__in' => $in]);
+            return $relationClass::objects()->relation($model, $this)->filter([$this->to_field . '__in' => $in]);
         }
     }
 }

@@ -1,11 +1,7 @@
 <?php
-/**
- * User: Alexander.Arutyunov
- * Date: 17.01.14
- * Time: 16:49
- */
 
 namespace Dja\Db\Model\Query;
+
 use Dja\Db\Model\Model;
 
 /**

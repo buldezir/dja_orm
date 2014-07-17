@@ -25,6 +25,11 @@ class Float extends Base
         return new Column($this->db_column, Type::getType(Type::FLOAT));
     }
 
+    public function getPhpType()
+    {
+        return 'float';
+    }
+
     public function toPhp($value)
     {
         if (is_string($value)) {

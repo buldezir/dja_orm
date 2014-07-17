@@ -1,11 +1,5 @@
 <?php
 /**
- * User: Alexander.Arutyunov
- * Date: 27.07.13
- * Time: 15:35
- */
-
-/**
  * @param $start
  * @param $limit
  * @param int $step

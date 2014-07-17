@@ -1,11 +1,12 @@
 <?php
-/**
- * User: Alexander.Arutyunov
- * Date: 10.07.13
- * Time: 13:25
- */
+
 namespace Dja\Util;
 
+/**
+ *  classy abstract singleton with late state binding
+ * Class Singleton
+ * @package Dja\Util
+ */
 abstract class Singleton
 {
     protected static $_instCache = array();

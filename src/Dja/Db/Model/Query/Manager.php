@@ -7,6 +7,7 @@
 
 namespace Dja\Db\Model\Query;
 
+use Dja\Db\Model\Field\Relation;
 use Dja\Db\Model\Metadata;
 use Dja\Db\Model\Model;
 use Doctrine\DBAL\Connection;
@@ -66,6 +67,7 @@ class Manager
     /**
      * @param array $data
      * @return int
+     * @see Queryset::doInsert
      */
     public function doInsert(array $data)
     {
@@ -171,6 +173,16 @@ class Manager
     public function valuesList($valueField, $keyField = null)
     {
         return new ValuesListQuerySet($this->metadata, null, null, $keyField, $valueField);
+    }
+
+    /**
+     * @param Model $ownerModel
+     * @param Relation $ownerField
+     * @return RelationQuerySet
+     */
+    public function relation(Model $ownerModel, Relation $ownerField)
+    {
+        return new RelationQuerySet($this->metadata, null, null, $ownerModel, $ownerField);
     }
 
     /**

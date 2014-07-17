@@ -32,6 +32,11 @@ class TimeStamp extends Base
         return new Column($this->db_column, Type::getType(Type::INTEGER), ['unsigned' => true]);
     }
 
+    public function getPhpType()
+    {
+        return '\DateTime';
+    }
+
     public function init()
     {
         $this->attachEvents();

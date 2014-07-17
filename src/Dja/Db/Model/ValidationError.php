@@ -1,14 +1,13 @@
 <?php
-/**
- * User: Alexander.Arutyunov
- * Date: 29.08.13
- * Time: 12:53
- */
 
 namespace Dja\Db\Model;
 
 use Exception;
 
+/**
+ * Class ValidationError
+ * @package Dja\Db\Model
+ */
 class ValidationError extends \Exception
 {
     protected $messages = array();

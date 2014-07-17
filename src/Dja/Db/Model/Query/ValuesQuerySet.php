@@ -1,13 +1,9 @@
 <?php
-/**
- * User: Alexander.Arutyunov
- * Date: 14.01.14
- * Time: 17:03
- */
 
 namespace Dja\Db\Model\Query;
 
 use Dja\Db\Model\Metadata;
+use Dja\Db\Model\Model;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Query\QueryBuilder;
 
@@ -75,5 +71,15 @@ class ValuesQuerySet extends BaseQuerySet
             $this->queryStringCache = $this->qb->getSQL();
         }
         return $this->queryStringCache;
+    }
+
+    /**
+     * @param array $arguments
+     * @return Model|void
+     * @throws \BadMethodCallException
+     */
+    public function getOrCreate(array $arguments)
+    {
+        throw new \BadMethodCallException('Cant use getOrCreate method for ' . get_class($this));
     }
 }

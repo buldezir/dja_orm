@@ -41,6 +41,10 @@ class Int extends Base
         return new Column($this->db_column, Type::getType($type), ['precision' => $this->precision]);
     }
 
+    public function getPhpType()
+    {
+        return 'integer';
+    }
 
     public function toPhp($value)
     {

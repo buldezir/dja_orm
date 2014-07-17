@@ -26,6 +26,11 @@ class Bool extends Base
         return new Column($this->db_column, Type::getType(Type::BOOLEAN));
     }
 
+    public function getPhpType()
+    {
+        return 'bool';
+    }
+
     /**
      * @param $value
      * @return bool

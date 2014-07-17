@@ -40,6 +40,11 @@ class DateTime extends Base
         return new Column($this->db_column, Type::getType(Type::DATETIME));
     }
 
+    public function getPhpType()
+    {
+        return 'string';
+    }
+
     public function init()
     {
         $this->attachEvents();
