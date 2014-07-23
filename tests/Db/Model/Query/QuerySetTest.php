@@ -88,16 +88,20 @@ class QuerySetTest extends PHPUnit_Framework_TestCase
     public function testFilterFail()
     {
         $this->setExpectedException('\\DomainException');
-        $q = CustomerOrderModel::objects()->filter(['user__user_id__gt' => 30]);
+        $q = CustomerOrderModel::objects()->filter(['user__user_id__gt' => 100]);
     }
 
     public function testFilterNull()
     {
-        $q = UserModel::objects()->filter(['lastname' => null]);
-        $this->assertNull($q->current()->lastname);
+        $q = UserModel::objects()->filter(['ip' => null]);
+        $obj = $q->current();
+        $this->assertInstanceOf('\\UserModel', $obj);
+        $this->assertNull($obj->ip);
 
-        $q2 = UserModel::objects()->exclude(['lastname' => null]);
-        $this->assertNotNull($q2->current()->lastname);
+        $q2 = UserModel::objects()->exclude(['ip' => null]);
+        $obj2 = $q2->current();
+        $this->assertInstanceOf('\\UserModel', $obj2);
+        $this->assertNotNull($obj2->ip);
     }
 
     public function testFilterIn1()

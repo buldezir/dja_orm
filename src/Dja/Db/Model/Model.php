@@ -450,10 +450,12 @@ abstract class Model implements \ArrayAccess
         if ($this->inited === true && $field->editable === false) {
             throw new \Exception("Field '{$name}' is read-only");
         }
-        if ($raw) {
-            $value = $field->fromDbValue($value);
-        } else {
-            $value = $field->cleanValue($value);
+        if (!($field->null && $value === null)) {
+            if ($raw) {
+                $value = $field->fromDbValue($value);
+            } else {
+                $value = $field->cleanValue($value);
+            }
         }
         if ($this->metadata->isLocal($name)) {
             $this->data[$name] = $value;

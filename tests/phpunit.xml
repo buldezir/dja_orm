@@ -1,9 +1,15 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<phpunit bootstrap="bootstrap.php" colors="true">
+<phpunit bootstrap="bootstrap.php" colors="true" backupGlobals="false">
     <filter>
         <blacklist>
             <directory>../vendor</directory>
             <directory>../tests</directory>
         </blacklist>
     </filter>
+    <php>
+        <const name="DB_HOST" value="localhost"/>
+        <const name="DB_NAME" value="sasha"/>
+        <const name="DB_USER" value="sasha"/>
+        <const name="DB_PASSWORD" value=""/>
+    </php>
 </phpunit>

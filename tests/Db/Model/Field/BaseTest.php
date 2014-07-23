@@ -9,7 +9,7 @@ class BaseTest extends \PHPUnit_Framework_TestCase
 {
     public function testViewValue()
     {
-        $f = new \Dja\Db\Model\Field\Base([
+        $f = new \Dja\Db\Model\Field\Char([
             'name' => 'test',
             'choices' => [
                 1 => 'ch1',

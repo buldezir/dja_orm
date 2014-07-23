@@ -1,5 +1,20 @@
 <?php
 /**
+ * global namespace;
+ */
+
+/**
+ * import data from json post request to $_POST array
+ */
+function importPostJsonData()
+{
+    $data = json_decode(file_get_contents('php://input'), true);
+    foreach ($data as $k => $v) {
+        $_POST[$k] = $v;
+    }
+}
+
+/**
  * @param $start
  * @param $limit
  * @param int $step

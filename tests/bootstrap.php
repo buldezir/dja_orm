@@ -21,41 +21,71 @@ $dbConn = \Doctrine\DBAL\DriverManager::getConnection(array(
 ));
 Dja\Db\Model\Metadata::setDefaultDbConnection($dbConn);
 
-register_shutdown_function(function () use ($dbConn) {
-    $dbConn->close();
-});
-
 $log = new Doctrine\DBAL\Logging\DebugStack();
 $dbConn->getConfiguration()->setSQLLogger($log);
 SqlLog::$log = $log;
 
 class UserModel extends Dja\Db\Model\Model
 {
-    protected static $dbtable = 'user';
-
+    protected static $dbtable = 'test_user';
     protected static $fields = [
         'user_id' => ['Auto'],
         'username' => ['Char'],
         'email' => ['Email'],
         'password' => ['Char'],
-        'firstname' => ['Char', 'default' => ''],
-        'lastname' => ['Char', 'default' => ''],
         'date_added' => ['DateTime', 'autoInsert' => true],
         'date_modified' => ['DateTime', 'autoUpdate' => true],
         'is_active' => ['Bool', 'default' => true],
-        'ip' => ['Char'],
+        'ip' => ['Char', 'null' => true],
     ];
 }
+
 class CustomerOrderModel extends Dja\Db\Model\Model
 {
-    protected static $dbtable = 'customer_order';
+    protected static $dbtable = 'test_customer_order';
     protected static $fields = [
         'customer_order_id' => ['Auto', 'help_text' => 'первичный ключ'],
-        'date_added' => ['DateTime', 'null' => true, 'help_text' => 'время создания'],
-        'user' => ['ForeignKey', 'relationClass' => 'UserModel', 'db_column' => 'user_id', 'null' => true, 'help_text' => 'ссылка на ответственного менеджера БО'],
+        'date_added' => ['DateTime', 'autoInsert' => true, 'help_text' => 'время создания'],
+        'user' => ['ForeignKey', 'relationClass' => 'UserModel', 'db_column' => 'user_id', 'null' => true, 'help_text' => 'ссылка на юзера'],
         'order_number' => ['Char', 'null' => true, 'max_length' => 21, 'default' => '', 'blank' => true, 'help_text' => 'полный номер заказа'],
     ];
 }
+
+$creation = new \Dja\Db\Creation($dbConn, ['UserModel', 'CustomerOrderModel']);
+$creation->processQueueCallback(function (\Dja\Db\Model\Metadata $metadata, \Doctrine\DBAL\Schema\Table $table, array $sql, \Doctrine\DBAL\Connection $db) {
+    foreach ($sql as $sqlstmt) {
+        $db->exec($sqlstmt);
+    }
+    $instclass = $metadata->getModelClass();
+    switch ($instclass) {
+        case 'UserModel':
+            for ($i = 1; $i <= 99; $i++) {
+                $user = new UserModel([
+                    'username' => 'testUser' . $i,
+                    'email' => 'test' . $i . '@ya.ru',
+                    'password' => md5('passw' . $i),
+                    'ip' => ($i < 90 ? '127.0.0.1' : null),
+                ]);
+                $user->save();
+            }
+            break;
+        case 'CustomerOrderModel':
+            for ($i = 1; $i <= 99; $i++) {
+                $order = new CustomerOrderModel([
+                    'order_number' => 'testOrder' . $i,
+                    'user_id' => $i,
+                ]);
+                $order->save();
+            }
+            break;
+    }
+});
+
+register_shutdown_function(function () use ($dbConn) {
+    $dbConn->getSchemaManager()->dropTable(CustomerOrderModel::metadata()->getDbTableName());
+    $dbConn->getSchemaManager()->dropTable(UserModel::metadata()->getDbTableName());
+    $dbConn->close();
+});
 
 class SqlLog
 {
@@ -81,19 +111,3 @@ function validationErrorsToString(array $validationErrors)
     }
     return $result;
 }
-
-/*
-CREATE TABLE "public"."user" (
-	"user_id" serial NOT NULL,
-	"username" varchar(255) NOT NULL DEFAULT ''::character varying COLLATE "default",
-	"password" varchar(255) NOT NULL DEFAULT ''::character varying COLLATE "default",
-	"firstname" varchar(32) DEFAULT ''::character varying COLLATE "default",
-	"lastname" varchar(32) DEFAULT ''::character varying COLLATE "default",
-	"email" varchar(96) NOT NULL DEFAULT ''::character varying COLLATE "default",
-	"ip" varchar(15) NOT NULL DEFAULT ''::character varying COLLATE "default",
-	"date_added" timestamp(6) NOT NULL,
-	"date_modified" timestamp(6) NOT NULL,
-	"is_active" bool NOT NULL DEFAULT true,
-	CONSTRAINT "user_pkey" PRIMARY KEY ("user_id") NOT DEFERRABLE INITIALLY IMMEDIATE
-)
- */

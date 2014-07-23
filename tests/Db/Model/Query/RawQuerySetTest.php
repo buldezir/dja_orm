@@ -16,10 +16,10 @@ class RawQuerySetTest extends PHPUnit_Framework_TestCase
     public function testReplacements()
     {
         $q = CustomerOrderModel::objects()->raw('SELECT :pk, :user FROM :t WHERE :user < 100 LIMIT 5');
-        $this->assertEquals('SELECT "customer_order_id", "user_id" FROM "customer_order" WHERE "user_id" < 100 LIMIT 5', strval($q));
+        $this->assertEquals('SELECT "customer_order_id", "user_id" FROM "' . CustomerOrderModel::metadata()->getDbTableName() . '" WHERE "user_id" < 100 LIMIT 5', strval($q));
 
         $q = CustomerOrderModel::objects()->raw('SELECT * FROM :t');
-        $this->assertEquals('SELECT "customer_order_id", "date_added", "user_id", "order_number" FROM "customer_order"', strval($q));
+        $this->assertEquals('SELECT "customer_order_id", "date_added", "user_id", "order_number" FROM "' . CustomerOrderModel::metadata()->getDbTableName() . '"', strval($q));
     }
 
     public function testBind()

@@ -98,7 +98,7 @@ abstract class BaseQuerySet extends DataIterator implements \ArrayAccess
      * filter -> selectRelated(['field_name1', 'field_name2'])
      * no arguments for join all, or related field names, or single int arg = joinMaxDepth
      * @param array $arguments
-     * @return $this|Model[]
+     * @return BaseQuerySet|Model[]
      */
     public function selectRelated(array $arguments)
     {
@@ -114,7 +114,7 @@ abstract class BaseQuerySet extends DataIterator implements \ArrayAccess
     /**
      * where NOT *
      * @param array|QueryPart $arguments
-     * @return $this|Model[]
+     * @return BaseQuerySet|Model[]
      * @throws \InvalidArgumentException
      */
     public function exclude($arguments)
@@ -125,7 +125,7 @@ abstract class BaseQuerySet extends DataIterator implements \ArrayAccess
     /**
      * where *
      * @param array|QueryPart $arguments
-     * @return $this|Model[]
+     * @return BaseQuerySet|Model[]
      * @throws \InvalidArgumentException
      */
     public function filter($arguments)
@@ -137,7 +137,7 @@ abstract class BaseQuerySet extends DataIterator implements \ArrayAccess
      * set Order By part for query
      * @param array $arguments
      * @throws \DomainException
-     * @return $this|Model[]
+     * @return BaseQuerySet|Model[]
      */
     public function order(array $arguments)
     {
@@ -168,7 +168,7 @@ abstract class BaseQuerySet extends DataIterator implements \ArrayAccess
     /**
      * @param $limit
      * @param null $offset
-     * @return $this|Model[]
+     * @return BaseQuerySet|Model[]
      */
     public function limit($limit, $offset = null)
     {
@@ -180,7 +180,7 @@ abstract class BaseQuerySet extends DataIterator implements \ArrayAccess
     /**
      * @param int $curPage
      * @param int $itemsPerPage
-     * @return $this|Model[]
+     * @return BaseQuerySet|Model[]
      */
     public function byPage($curPage, $itemsPerPage = 50)
     {
