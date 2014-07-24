@@ -1,9 +1,7 @@
 <?php
 
 /**
- * User: Alexander.Arutyunov
- * Date: 06.03.14
- * Time: 12:00
+ * Class ManagerTest
  */
 class ManagerTest extends \PHPUnit_Framework_TestCase
 {
@@ -11,6 +9,12 @@ class ManagerTest extends \PHPUnit_Framework_TestCase
     {
         $this->setExpectedException('\\InvalidArgumentException');
         $m = new \Dja\Db\Model\Query\Manager('\Dja\Db\Model\Model');
+    }
+
+    public function testAccess()
+    {
+        $this->assertInstanceOf('\\Dja\\Db\\Model\\Query\\Manager', UserModel::objects());
+        $this->assertInstanceOf('\\Dja\\Db\\Model\\Query\\QuerySet', UserModel::objects()->all());
     }
 
     public function testGetOrCreate()
@@ -23,12 +27,5 @@ class ManagerTest extends \PHPUnit_Framework_TestCase
         $this->assertInstanceOf('\\UserModel', $obj);
         $this->assertTrue($obj->isNewRecord());
     }
-
-//    public function testDoUpdateInsertFail()
-//    {
-//        $this->setExpectedException('\\LogicException');
-//        UserModel::objects()->doDelete();
-//        UserModel::objects()->doUpdate([]);
-//    }
 }
  

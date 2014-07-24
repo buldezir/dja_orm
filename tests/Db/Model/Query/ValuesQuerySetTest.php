@@ -1,9 +1,7 @@
 <?php
 
 /**
- * User: Alexander.Arutyunov
- * Date: 21.01.14
- * Time: 17:25
+ * Class ValuesQuerySetTest
  */
 class ValuesQuerySetTest extends PHPUnit_Framework_TestCase
 {

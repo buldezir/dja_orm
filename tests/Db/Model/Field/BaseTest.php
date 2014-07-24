@@ -1,9 +1,7 @@
 <?php
 
 /**
- * User: Alexander.Arutyunov
- * Date: 06.03.14
- * Time: 17:27
+ * Class BaseTest
  */
 class BaseTest extends \PHPUnit_Framework_TestCase
 {

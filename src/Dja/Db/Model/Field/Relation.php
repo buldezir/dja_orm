@@ -23,14 +23,6 @@ abstract class Relation extends Base
     }
 
     /**
-     * @return bool
-     */
-    public function isRelation()
-    {
-        return true;
-    }
-
-    /**
      * @return \Dja\Db\Model\Metadata
      */
     public function getRelationMetadata()

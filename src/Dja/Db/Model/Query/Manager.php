@@ -1,18 +1,15 @@
 <?php
-/**
- * User: Alexander.Arutyunov
- * Date: 18.01.14
- * Time: 19:23
- */
 
 namespace Dja\Db\Model\Query;
 
 use Dja\Db\Model\Field\Relation;
 use Dja\Db\Model\Metadata;
 use Dja\Db\Model\Model;
-use Doctrine\DBAL\Connection;
-use Doctrine\DBAL\Query\Query;
 
+/**
+ * Class Manager
+ * @package Dja\Db\Model\Query
+ */
 class Manager
 {
     /**

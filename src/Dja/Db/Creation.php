@@ -104,7 +104,7 @@ class Creation
             if ($fieldObj->primary_key) {
                 $table->setPrimaryKey([$fieldObj->db_column]);
             }
-            if ($this->followRelations === true && $fieldObj->isRelation() && $fieldObj instanceof ForeignKey) {
+            if ($this->followRelations === true && $fieldObj instanceof ForeignKey) {
                 $relationClass = $fieldObj->relationClass;
                 $relactionTable = $this->metadataToTable($relationClass::metadata());
                 $table->addForeignKeyConstraint($relactionTable, [$fieldObj->db_column], [$fieldObj->to_field]);

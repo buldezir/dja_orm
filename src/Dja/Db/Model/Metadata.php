@@ -2,6 +2,7 @@
 
 namespace Dja\Db\Model;
 
+use Dja\Db\Model\Field\Base;
 use Dja\Util\Inflector;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\EventDispatcher\GenericEvent as Event;
@@ -204,14 +205,15 @@ class Metadata
 
     /**
      * @param string $name
-     * @param array $options
+     * @param array|Field\Base $options
      * @return $this
      */
-    public function addField($name, array $options)
+    public function addField($name, $options)
     {
         $this->_addField($name, $options);
         return $this;
     }
+
 
     /**
      * @param $name
@@ -221,7 +223,36 @@ class Metadata
     {
         $f = $this->getField($name);
         unset($this->_allFields[$name], $this->_localFields[$name], $this->_many2manyFields[$name], $this->_virtualFields[$name]);
-        unset($this->_allFields[$f->db_column], $this->_localFields[$f->db_column], $this->_many2manyFields[$f->db_column], $this->_virtualFields[$f->db_column]);
+        if ($f->db_column) {
+            unset($this->_allFields[$f->db_column], $this->_localFields[$f->db_column], $this->_many2manyFields[$f->db_column], $this->_virtualFields[$f->db_column]);
+        }
+        return $this;
+    }
+
+    /**
+     * @param $name
+     * @param Base $fieldObj
+     * @return $this
+     * @throws \Exception
+     */
+    public function addAlias($name, Base $fieldObj)
+    {
+        if (array_key_exists($name, $this->_allFields)) {
+            throw new \Exception("Cant be fields with same name! ($name)");
+        }
+        $this->_allFields[$name] = $fieldObj;
+        $this->_virtualFields[$name] = $fieldObj;
+        return $this;
+    }
+
+    /**
+     * @param $name
+     * @return $this
+     */
+    public function removeAlias($name)
+    {
+        $f = $this->getField($name);
+        unset($this->_allFields[$name], $this->_virtualFields[$name]);
         return $this;
     }
 
@@ -247,53 +278,38 @@ class Metadata
             }
         } elseif ($options instanceof $baseClass) {
             $fieldObj = $options;
-            $fieldObj->setOption('name', $name);
+            if (!$fieldObj->name) {
+                $fieldObj->setOption('name', $name);
+            }
             $fieldObj->setOption('ownerClass', $this->modelClassName);
         } else {
             throw new \Exception("Field '$name' \$options must be array or object subclass of '$baseClass'");
         }
         $fieldObj->setMetadata($this);
         $fieldObj->init();
+        if (array_key_exists($name, $this->_allFields)) {
+            throw new \Exception("Cant be fields with same name! ($name)");
+        }
+        if ($fieldObj->db_column && array_key_exists($fieldObj->db_column, $this->_allFields)) {
+            throw new \Exception("Cant be fields with same db_column! ($fieldObj->db_column)");
+        }
         if ($fieldObj instanceof Field\ManyRelation) {
-            if (array_key_exists($name, $this->_allFields)) {
-                throw new \Exception("Cant be fields with same name or db_column! ($name)");
-            } else {
-                $this->_many2manyFields[$name] = $fieldObj;
-                $this->_allFields[$name] = $fieldObj;
-                $this->_virtualFields[$name] = $fieldObj;
-            }
+            $this->_many2manyFields[$name] = $fieldObj;
+            $this->addAlias($name, $fieldObj);
+        } elseif ($fieldObj instanceof Field\SingleRelation) {
+            $this->_localFields[$fieldObj->db_column] = $fieldObj;
+            $this->_allFields[$fieldObj->db_column] = $fieldObj;
+            $this->addAlias($name, $fieldObj);
+        } elseif ($fieldObj instanceof Field\Virtual) {
+            $this->addAlias($name, $fieldObj);
         } else {
-            if ($fieldObj->isRelation()) {
-                if (array_key_exists($fieldObj->db_column, $this->_allFields) || array_key_exists($name, $this->_allFields)) {
-                    throw new \Exception("Cant be fields with same name or db_column! ($name)");
-                } else {
-                    $this->_localFields[$fieldObj->db_column] = $fieldObj;
-                    $this->_virtualFields[$name] = $fieldObj;
-                    $this->_allFields[$fieldObj->db_column] = $fieldObj;
-                    $this->_allFields[$name] = $fieldObj;
-                }
-            } else {
-                if (array_key_exists($name, $this->_allFields)) {
-                    throw new \Exception("Cant be fields with same name or db_column! ($name)");
-                } else {
-                    $this->_localFields[$name] = $fieldObj;
-                    $this->_allFields[$name] = $fieldObj;
-                }
-            }
+            $this->_localFields[$name] = $fieldObj;
+            $this->_allFields[$name] = $fieldObj;
             if ($fieldObj->primary_key) {
-                if (array_key_exists('pk', $this->_virtualFields)) {
-                    throw new \Exception("More than 1 primary key is not allowed! ($name)");
-                } else {
-                    if (array_key_exists('pk', $this->_allFields)) {
-                        throw new \Exception("Cant be fields with same name or db_column! ($name)");
-                    } else {
-                        $this->_virtualFields['pk'] = $fieldObj;
-                        $this->_allFields['pk'] = $fieldObj;
-                    }
-                }
+                $this->addAlias('pk', $fieldObj);
             }
         }
-        $this->events()->dispatch(self::EVENT_AFTER_ADD, new Event($fieldObj, $options));
+        $this->events()->dispatch(self::EVENT_AFTER_ADD, new Event($fieldObj, ['alias' => $name]));
     }
 
     /**

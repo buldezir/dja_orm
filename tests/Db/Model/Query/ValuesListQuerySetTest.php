@@ -1,17 +1,16 @@
 <?php
 
 /**
- * User: Alexander.Arutyunov
- * Date: 21.01.14
- * Time: 17:30
+ * Class ValuesListQuerySetTest
  */
 class ValuesListQuerySetTest extends PHPUnit_Framework_TestCase
 {
     public function testBase()
     {
-        $q = UserModel::objects()->valuesList('username', 'user_id')->limit(5);
-        foreach ($q as $obj) {
+        $q = CustomerOrderModel::objects()->valuesList('order_number', 'order_number')->limit(5);
+        foreach ($q as $key => $obj) {
             $this->assertInternalType('string', $obj);
+            $this->assertEquals($key, $obj);
         }
         $this->assertCount(5, $q);
     }

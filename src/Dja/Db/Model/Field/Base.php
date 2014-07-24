@@ -1,9 +1,4 @@
 <?php
-/**
- * User: Alexander.Arutyunov
- * Date: 12.07.13
- * Time: 13:11
- */
 
 namespace Dja\Db\Model\Field;
 
@@ -240,7 +235,7 @@ abstract class Base
      */
     public function isRelation()
     {
-        return false;
+        return $this instanceof Relation;
     }
 
     /**

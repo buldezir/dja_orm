@@ -3,6 +3,7 @@
 namespace Dja\Db\Model;
 
 use Dja\Db\Model\Field\Relation;
+use Dja\Db\Model\Field\Virtual;
 use Dja\Db\Model\Query\Manager;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\EventDispatcher\GenericEvent as Event;
@@ -418,37 +419,39 @@ abstract class Model implements \ArrayAccess
     }
 
     /**
-     * @param $name
+     * @param $alias
      * @return mixed
      */
-    protected function _get($name)
+    protected function _get($alias)
     {
-        $field = $this->metadata->getField($name);
-        if ($this->metadata->isLocal($name)) {
-            return isset($this->data[$name]) ? $this->data[$name] : null;
-        } elseif ($this->metadata->isVirtual($name)) {
+        $field = $this->metadata->getField($alias);
+        if ($this->metadata->isLocal($alias)) {
+            return isset($this->data[$alias]) ? $this->data[$alias] : null;
+        } elseif ($this->metadata->isVirtual($alias)) {
             if ($field instanceof Relation) {
                 return $this->getLazyRelation($field);
+            } elseif ($field instanceof Virtual) {
+                return $field->getProcessedValue($this);
             } else {
                 return isset($this->data[$field->db_column]) ? $this->data[$field->db_column] : null;
             }
         } else {
-            return isset($this->data[$name]) ? $this->data[$name] : null;
+            return isset($this->data[$alias]) ? $this->data[$alias] : null;
         }
     }
 
     /**
-     * @param $name
+     * @param $alias
      * @param $value
      * @param bool $raw
      * @throws \InvalidArgumentException
      * @throws \Exception
      */
-    protected function _set($name, $value, $raw = false)
+    protected function _set($alias, $value, $raw = false)
     {
-        $field = $this->metadata->getField($name);
+        $field = $this->metadata->getField($alias);
         if ($this->inited === true && $field->editable === false) {
-            throw new \Exception("Field '{$name}' is read-only");
+            throw new \Exception("Field '{$alias}' is read-only");
         }
         if (!($field->null && $value === null)) {
             if ($raw) {
@@ -457,11 +460,11 @@ abstract class Model implements \ArrayAccess
                 $value = $field->cleanValue($value);
             }
         }
-        if ($this->metadata->isLocal($name)) {
-            $this->data[$name] = $value;
-        } elseif ($this->metadata->isVirtual($name)) {
+        if ($this->metadata->isLocal($alias)) {
+            $this->data[$alias] = $value;
+        } elseif ($this->metadata->isVirtual($alias)) {
             if ($field->isRelation()) {
-                $this->relationDataCache[$name] = $value;
+                $this->relationDataCache[$alias] = $value;
                 $this->data[$field->db_column] = $value->__get($field->to_field);
             } else {
                 $this->data[$field->db_column] = $value;
