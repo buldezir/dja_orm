@@ -31,6 +31,8 @@ class UserModel extends Dja\Db\Model\Model
     protected static $fields = [
         'user_id' => ['Auto'],
         'username' => ['Char'],
+        'fullname' => ['Char'],
+        'slug' => ['Slug', 'prepopulate_field' => 'fullname'],
         'email' => ['Email'],
         'password' => ['Char'],
         'date_added' => ['DateTime', 'autoInsert' => true],
@@ -62,6 +64,7 @@ $creation->processQueueCallback(function (\Dja\Db\Model\Metadata $metadata, \Doc
             for ($i = 1; $i <= 99; $i++) {
                 $user = new UserModel([
                     'username' => 'testUser' . $i,
+                    'fullname' => 'testUser ' . $i . ' with space',
                     'email' => 'test' . $i . '@ya.ru',
                     'password' => md5('passw' . $i),
                     'ip' => ($i < 90 ? '127.0.0.1' : null),

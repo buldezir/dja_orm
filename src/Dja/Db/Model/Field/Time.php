@@ -16,8 +16,8 @@ use Doctrine\DBAL\Types\Type;
  */
 class Time extends DateTime
 {
-    protected $re = '#^\d{2}:\d{2}:\d{2}$#';
-    protected $format = 'H:i:s';
+    const FORMAT = 'H:i:s';
+    const REGEX = '#^\d{2}:\d{2}:\d{2}$#';
 
     /**
      * @return \Doctrine\DBAL\Schema\Column

@@ -57,6 +57,7 @@ class Inflector
 
     /**
      * Camelize a word. This uses the classify() method and turns the first character to lowercase
+     * Converts 'my_table_name' to 'myTableName'
      *
      * @param string $word
      * @return string $word

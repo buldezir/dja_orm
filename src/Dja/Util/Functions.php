@@ -160,11 +160,25 @@ function expand_ip_address($addr_str)
  * @param $string
  * @return string
  */
-function slugify($string)
+/*function slugify($string)
 {
     $string = transliterator_transliterate("Any-Latin; NFD; [:Nonspacing Mark:] Remove; NFC; [:Punctuation:] Remove; Lower();", $string);
     $string = preg_replace('/[-\s]+/', '-', $string);
     return trim($string, '-');
+}*/
+function slugify($text)
+{
+    // replace non letter or digits by -
+    $text = preg_replace('~[^\\pL\d]+~u', '-', $text);
+    // trim
+    $text = trim($text, '-');
+    // transliterate
+    $text = iconv('utf-8', 'us-ascii//TRANSLIT', $text);
+    // lowercase
+    $text = strtolower($text);
+    // remove unwanted characters
+    $text = preg_replace('~[^-\w]+~', '', $text);
+    return $text;
 }
 
 /**

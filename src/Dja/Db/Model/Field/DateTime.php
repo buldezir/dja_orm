@@ -21,8 +21,8 @@ use Doctrine\DBAL\Types\Type;
  */
 class DateTime extends Base
 {
-    protected $re = '#^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$#';
-    protected $format = 'Y-m-d H:i:s';
+    const FORMAT = 'Y-m-d H:i:s';
+    const REGEX = '#^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$#';
 
     public function __construct(array $options = array())
     {
@@ -53,7 +53,7 @@ class DateTime extends Base
 
     public function getDefault()
     {
-        return date($this->format);
+        return date(static::FORMAT);
     }
 
     public function toPhp($value)
@@ -61,7 +61,7 @@ class DateTime extends Base
         if (is_string($value)) {
             return $value;
         } elseif ($value instanceof \DateTime) {
-            return $value->format($this->format);
+            return $value->format(static::FORMAT);
         }
         return strval($value);
     }
@@ -69,7 +69,7 @@ class DateTime extends Base
     public function validate($value)
     {
         parent::validate($value);
-        if (!preg_match($this->re, $value)) {
+        if (!preg_match(static::REGEX, $value)) {
             throw new \InvalidArgumentException("Field '{$this->name}' must be in valid date-time format");
         }
     }

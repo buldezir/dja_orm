@@ -3,58 +3,61 @@
 namespace Dja\Db\Model\Lookup;
 
 /**
- * Class Postgresql
+ * Class Mysql
  * @package Dja\Db\Model\Lookup
  */
-class Postgresql extends LookupAbstract
+class Mysql extends LookupAbstract
 {
     public function lookupYear(&$escapedField, &$rawValue, &$negate)
     {
-        return $this->getDateTimePartLookup($escapedField, 'year');
+        return $this->getDateTimePartLookup($escapedField, 'YEAR');
     }
 
     public function lookupMonth(&$escapedField, &$rawValue, &$negate)
     {
-        return $this->getDateTimePartLookup($escapedField, 'month');
+        return $this->getDateTimePartLookup($escapedField, 'MONTH');
     }
 
     public function lookupDay(&$escapedField, &$rawValue, &$negate)
     {
-        return $this->getDateTimePartLookup($escapedField, 'day');
+        return $this->getDateTimePartLookup($escapedField, 'DAYOFMONTH');
     }
 
     public function lookupWeekDay(&$escapedField, &$rawValue, &$negate)
     {
         /*
          * php have 2 formats:
-         *  0 - sunday, 6 - saturday (dow acceps this format)
+         *  0 - sunday, 6 - saturday
          *  1 - monday, 7 - sunday
+         * DAYOFWEEK accepts:
+         *  1 - sunday, 7 - saturday
          */
         if ($rawValue == 7) {
             $rawValue = 0;
         }
-        return $this->getDateTimePartLookup($escapedField, 'dow');
+        $rawValue += 1;
+        return $this->getDateTimePartLookup($escapedField, 'DAYOFWEEK');
     }
 
     public function lookupHour(&$escapedField, &$rawValue, &$negate)
     {
-        return $this->getDateTimePartLookup($escapedField, 'hour');
+        return $this->getDateTimePartLookup($escapedField, 'HOUR');
     }
 
     public function lookupMinute(&$escapedField, &$rawValue, &$negate)
     {
-        return $this->getDateTimePartLookup($escapedField, 'minute');
+        return $this->getDateTimePartLookup($escapedField, 'MINUTE');
     }
 
     public function lookupSecond(&$escapedField, &$rawValue, &$negate)
     {
-        return $this->getDateTimePartLookup($escapedField, 'second');
+        return $this->getDateTimePartLookup($escapedField, 'SECOND');
     }
 
-    public function getDateTimePartLookup(&$escapedField, $type)
+    public function getDateTimePartLookup(&$escapedField, $typeFN)
     {
         $escapedFieldCopy = $escapedField;
         $escapedField = '';
-        return sprintf("date_part('%s', %s) = %%s", $type, $escapedFieldCopy);
+        return sprintf("%s(%s) = %%s", $typeFN, $escapedFieldCopy);
     }
 }

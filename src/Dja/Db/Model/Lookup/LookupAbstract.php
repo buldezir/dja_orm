@@ -3,6 +3,7 @@
 namespace Dja\Db\Model\Lookup;
 
 use Dja\Db\Model\Query\BaseQuerySet;
+use Dja\Util\Inflector;
 
 /**
  * Class LookupAbstract
@@ -10,17 +11,10 @@ use Dja\Db\Model\Query\BaseQuerySet;
  */
 abstract class LookupAbstract
 {
-    const TYPE_INT = 'int';
-    const TYPE_STRING = 'str';
-    const TYPE_BOOL = 'bool';
-    const TYPE_NULL = 'null';
-
     /**
      * @var \Doctrine\DBAL\Connection
      */
     protected $db;
-
-    protected $operators = array();
 
     /**
      * @param \Doctrine\DBAL\Connection $conn
@@ -32,13 +26,141 @@ abstract class LookupAbstract
         return new $className($conn);
     }
 
-    /**
-     * @param $op
-     * @return bool
-     */
-    public function issetLookup($op)
+    abstract public function lookupYear(&$escapedField, &$rawValue, &$negate);
+
+    abstract public function lookupMonth(&$escapedField, &$rawValue, &$negate);
+
+    abstract public function lookupDay(&$escapedField, &$rawValue, &$negate);
+
+    abstract public function lookupWeekDay(&$escapedField, &$rawValue, &$negate);
+
+    abstract public function lookupHour(&$escapedField, &$rawValue, &$negate);
+
+    abstract public function lookupMinute(&$escapedField, &$rawValue, &$negate);
+
+    abstract public function lookupSecond(&$escapedField, &$rawValue, &$negate);
+
+    public function lookupExact(&$escapedField, &$rawValue, &$negate)
     {
-        return isset($this->operators[$op]);
+        if ($rawValue === null) {
+            return $this->lookupIsNull($escapedField, $rawValue, $negate);
+        }
+        return '= %s';
+    }
+
+    public function lookupIsNull(&$escapedField, &$rawValue, &$negate)
+    {
+        if ($negate) {
+            $negate = false;
+            return $this->lookupIsNotNull($escapedField, $rawValue, $negate);
+        }
+        return 'IS NULL';
+    }
+
+    public function lookupIsNotNull(&$escapedField, &$rawValue, &$negate)
+    {
+        if ($negate) {
+            $negate = false;
+            return $this->lookupIsNull($escapedField, $rawValue, $negate);
+        }
+        return 'IS NOT NULL';
+    }
+
+    public function lookupContains(&$escapedField, &$rawValue, &$negate)
+    {
+        $rawValue = '%' . $rawValue . '%';
+        return 'LIKE BINARY %s';
+    }
+
+    public function lookupIContains(&$escapedField, &$rawValue, &$negate)
+    {
+        $rawValue = '%' . $rawValue . '%';
+        return 'LIKE %s';
+    }
+
+    public function lookupStartsWith(&$escapedField, &$rawValue, &$negate)
+    {
+        $rawValue = $rawValue . '%';
+        $mock = '';
+        return $this->lookupContains($escapedField, $mock, $negate);
+    }
+
+    public function lookupIStartsWith(&$escapedField, &$rawValue, &$negate)
+    {
+        $rawValue = $rawValue . '%';
+        $mock = '';
+        return $this->lookupIContains($escapedField, $mock, $negate);
+    }
+
+    public function lookupEndsWith(&$escapedField, &$rawValue, &$negate)
+    {
+        $rawValue = '%' . $rawValue;
+        $mock = '';
+        return $this->lookupContains($escapedField, $mock, $negate);
+    }
+
+    public function lookupIEndsWith(&$escapedField, &$rawValue, &$negate)
+    {
+        $rawValue = '%' . $rawValue;
+        $mock = '';
+        return $this->lookupIContains($escapedField, $mock, $negate);
+    }
+
+    public function lookupRegex(&$escapedField, &$rawValue, &$negate)
+    {
+        return 'REGEXP BINARY %s';
+    }
+
+    public function lookupIRegex(&$escapedField, &$rawValue, &$negate)
+    {
+        return 'REGEXP %s';
+    }
+
+    public function lookupGt(&$escapedField, &$rawValue, &$negate)
+    {
+        return '> %s';
+    }
+
+    public function lookupGte(&$escapedField, &$rawValue, &$negate)
+    {
+        return '>= %s';
+    }
+
+    public function lookupLt(&$escapedField, &$rawValue, &$negate)
+    {
+        return '< %s';
+    }
+
+    public function lookupLte(&$escapedField, &$rawValue, &$negate)
+    {
+        return '<= %s';
+    }
+
+    public function lookupRaw(&$escapedField, &$rawValue, &$negate)
+    {
+        $escapedField = '';
+        return '%s';
+    }
+
+    public function lookupIn(&$escapedField, &$rawValue, &$negate)
+    {
+        if (!is_array($rawValue) && !$rawValue instanceof \Dja\Db\Model\Expr && !$rawValue instanceof BaseQuerySet) {
+            throw new \InvalidArgumentException("value for IN lookup must me array or QuerySet or Expr");
+        }
+        if (is_array($rawValue)) {
+            $rawValue = array_map([$this->db, 'quote'], $rawValue);
+            $rawValue = Expr(implode(', ', $rawValue));
+        }
+        return 'IN (%s)';
+    }
+
+    public function lookupRange(&$escapedField, &$rawValue, &$negate)
+    {
+        if (!is_array($rawValue) || count($rawValue) !== 2) {
+            throw new \InvalidArgumentException("value for RANGE lookup must me array with two elements");
+        }
+        $rawValue = Expr($this->db->quote($rawValue[0]) . ' AND ' . $this->db->quote($rawValue[1]));
+        return 'BETWEEN %s';
     }
 
     /**
@@ -51,93 +173,40 @@ abstract class LookupAbstract
      */
     public function getLookup($op, $escapedField, $rawValue, $negate = false)
     {
-        if (!$this->issetLookup($op)) {
+        $method = $this->getLookUpMethod($op);
+        if (!method_exists($this, $method)) {
             throw new \Exception("unsupported operator '{$op}'");
         }
-        switch ($op) {
-            case 'exact':
-                if ($rawValue === null) {
-                    $op = 'isnull';
-                }
-                break;
-            case 'contains':
-                $rawValue = '%' . $rawValue . '%';
-                break;
-            case 'icontains':
-                $rawValue = '%' . $rawValue . '%';
-                break;
-            case 'startswith':
-                $rawValue = $rawValue . '%';
-                break;
-            case 'endswith':
-                $rawValue = '%' . $rawValue;
-                break;
-            case 'istartswith':
-                $rawValue = $rawValue . '%';
-                break;
-            case 'iendswith':
-                $rawValue = '%' . $rawValue;
-                break;
-            case 'iexact':
-                $escapedField = 'lower(' . $escapedField . ')';
-                $rawValue = strtolower($rawValue);
-                break;
-            case 'raw':
-                $rawValue = sprintf($rawValue, $escapedField);
-                $escapedField = '';
-                break;
-            case 'range':
-                if (!is_array($rawValue) || count($rawValue) !== 2) {
-                    throw new \InvalidArgumentException("value for RANGE lookup must me array with two elements");
-                }
-                $rawValue = Expr($this->db->quote($rawValue[0]) . ' AND ' . $this->db->quote($rawValue[1]));
-                break;
-            case 'in':
-                if (!is_array($rawValue) && !$rawValue instanceof \Dja\Db\Model\Expr && !$rawValue instanceof BaseQuerySet) {
-                    throw new \InvalidArgumentException("value for IN lookup must me array or QuerySet or Expr");
-                }
-                if (is_array($rawValue)) {
-                    $rawValue = array_map('intval', $rawValue);
-                    $rawValue = Expr(implode(', ', $rawValue));
-                }
-                break;
-            default:
-                break;
-
-        }
-        if ($negate) {
-            switch ($op) {
-                case 'isnotnull':
-                    $op = 'isnull';
-                    $negate = false;
-                    break;
-                case 'isnull':
-                    $op = 'isnotnull';
-                    $negate = false;
-                    break;
-                default:
-                    break;
-            }
-        }
+        $lookupQ = $this->$method($escapedField, $rawValue, $negate);
         if ($negate) {
             $escapedField = 'NOT ' . $escapedField;
         }
-        $lookup = $this->operators[$op];
-        //$lookup = $negate ? 'NOT '.$this->operators[$op] : $this->operators[$op];
-        return array($escapedField, $lookup, $rawValue);
-    }
-
-    public function __construct($conn)
-    {
-        $this->db = $conn;
+        return [$escapedField, $lookupQ, $rawValue];
     }
 
     /**
-     * @param int $value
-     * @return mixed
+     * @param $op
+     * @return string
      */
-    public function toTimeStamp($value)
+    public function getLookUpMethod($op)
     {
-        return $value;
+        return Inflector::camelize('lookup_' . $op);
+    }
+
+    /**
+     * @param $op
+     * @return bool
+     */
+    public function issetLookup($op)
+    {
+        return method_exists($this, $this->getLookUpMethod($op));
+    }
+
+    /**
+     * @param \Doctrine\DBAL\Connection $conn
+     */
+    public function __construct(\Doctrine\DBAL\Connection $conn)
+    {
+        $this->db = $conn;
     }
 }

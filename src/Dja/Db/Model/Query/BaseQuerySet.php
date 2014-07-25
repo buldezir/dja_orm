@@ -222,7 +222,7 @@ abstract class BaseQuerySet extends DataIterator implements \ArrayAccess
         } elseif (!is_array($arguments)) {
             throw new \InvalidArgumentException('$arguments must be int or array');
         }
-        $result = $this->filter($arguments)->current();
+        $result = $this->filter($arguments)->limit(1)->current();
         if (!$result) {
             throw new \RuntimeException('Not found');
         }

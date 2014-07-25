@@ -74,49 +74,6 @@ class QuerySetTest extends PHPUnit_Framework_TestCase
         $q = UserModel::objects()->all()['10-10'];
     }
 
-    public function testFilterCommon()
-    {
-        $q = UserModel::objects()->filter(['user_id__gt' => 30, 'user_id__lt' => 40]);
-        $obj = $q->current();
-        $this->assertInstanceOf('\\Dja\\Db\\Model\\Model', $obj);
-        $this->assertGreaterThan(30, $obj->user_id);
-        $this->assertLessThan(40, $obj->user_id);
-    }
-
-    public function testFilterFail()
-    {
-        $this->setExpectedException('\\DomainException');
-        $q = CustomerOrderModel::objects()->filter(['user__user_id__gt' => 100]);
-    }
-
-    public function testFilterNull()
-    {
-        $q = UserModel::objects()->filter(['ip' => null]);
-        $obj = $q->current();
-        $this->assertInstanceOf('\\UserModel', $obj);
-        $this->assertNull($obj->ip);
-
-        $q2 = UserModel::objects()->exclude(['ip' => null]);
-        $obj2 = $q2->current();
-        $this->assertInstanceOf('\\UserModel', $obj2);
-        $this->assertNotNull($obj2->ip);
-    }
-
-    public function testFilterIn1()
-    {
-        $q = UserModel::objects()->filter(['user_id__in' => [1, 2, 3, 4, 5]]);
-        foreach ($q as $obj) {
-            $this->assertContains($obj->user_id, [1, 2, 3, 4, 5]);
-        }
-
-    }
-
-    public function testFilterIn2()
-    {
-        $q = UserModel::objects()->filter(['user_id__in' => Expr('SELECT user_id FROM "user"')]);
-        $this->assertInstanceOf('\\Dja\\Db\\Model\\Model', $q->current());
-    }
-
     public function testSelectRelated()
     {
         $countQ1 = count(SqlLog::$log->queries);
