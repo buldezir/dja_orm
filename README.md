@@ -155,3 +155,5 @@ class TestModel2 extends TestModel
     }
 }
 ```
+
+// testhooks
