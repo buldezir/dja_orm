@@ -7,12 +7,6 @@ Install
 With composer
 ```json
 {
-    "repositories": [
-        {
-            "type": "vcs",
-            "url": "http://github.com/buldezir/dja_orm"
-        }
-    ],
     "require": {
         "buldezir/dja_orm": "dev-master"
     }
