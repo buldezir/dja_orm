@@ -102,6 +102,9 @@ class ManyToMany extends Relation implements ManyToManyRelation
      */
     protected function _setupBackwardsRelation()
     {
+        if ($this->getRelationMetadata()->__isset($this->related_name)) {
+            return;
+        }
         $ownerClass = $this->getOption('ownerClass');
         if ($this->throughClass) {
             $options = array(

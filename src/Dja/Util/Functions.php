@@ -326,19 +326,13 @@ function Expr($value)
 }
 
 /**
- * @return array
+ * @param $className
+ * @return bool
  */
-function collectModels()
+function isModel($className)
 {
-    $result = array();
-    $allClasses = get_declared_classes();
-    foreach ($allClasses as $className) {
-        $refl = new \ReflectionClass($className);
-        if ($refl->isSubclassOf('\\Dja\\Db\\Model\\Model') && !$refl->isAbstract()) {
-            $result[] = $className;
-        }
-    }
-    return $result;
+    $refl = new \ReflectionClass($className);
+    return ($refl->isSubclassOf('\\Dja\\Db\\Model\\Model') && !$refl->isAbstract());
 }
 
 /**
@@ -363,7 +357,7 @@ function includeAndInitModels($file)
     }
     $gdc1 = get_declared_classes();
     require_once $file;
-    $classes = array_diff(get_declared_classes(), $gdc1);
+    $classes = array_filter(array_diff(get_declared_classes(), $gdc1), 'isModel');
     initModels($classes);
     return $classes;
 }

@@ -68,6 +68,9 @@ class ForeignKey extends Relation implements SingleRelation
      */
     protected function _setupBackwardsRelation()
     {
+        if ($this->getRelationMetadata()->__isset($this->related_name)) {
+            return;
+        }
         $ownerClass = $this->getOption('ownerClass');
         $relationClass = $this->getOption('relationClass');
         $options = array(
