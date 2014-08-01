@@ -58,31 +58,26 @@ $creation->processQueueCallback(function (\Dja\Db\Model\Metadata $metadata, \Doc
     foreach ($sql as $sqlstmt) {
         $db->exec($sqlstmt);
     }
-    $instclass = $metadata->getModelClass();
-    switch ($instclass) {
-        case 'UserModel':
-            for ($i = 1; $i <= 99; $i++) {
-                $user = new UserModel([
-                    'username' => 'testUser' . $i,
-                    'fullname' => 'testUser ' . $i . ' with space',
-                    'email' => 'test' . $i . '@ya.ru',
-                    'password' => md5('passw' . $i),
-                    'ip' => ($i < 90 ? '127.0.0.1' : null),
-                ]);
-                $user->save();
-            }
-            break;
-        case 'CustomerOrderModel':
-            for ($i = 1; $i <= 99; $i++) {
-                $order = new CustomerOrderModel([
-                    'order_number' => 'testOrder' . $i,
-                    'user_id' => $i,
-                ]);
-                $order->save();
-            }
-            break;
-    }
 });
+
+for ($i = 1; $i <= 99; $i++) {
+    $user = new UserModel([
+        'username' => 'testUser' . $i,
+        'fullname' => 'testUser ' . $i . ' with space',
+        'email' => 'test' . $i . '@ya.ru',
+        'password' => md5('passw' . $i),
+        'ip' => ($i < 90 ? '127.0.0.1' : null),
+    ]);
+    $user->save();
+}
+
+for ($i = 1; $i <= 99; $i++) {
+    $order = new CustomerOrderModel([
+        'order_number' => 'testOrder' . $i,
+        'user_id' => $i,
+    ]);
+    $order->save();
+}
 
 register_shutdown_function(function () use ($dbConn) {
     $dbConn->getSchemaManager()->dropTable(CustomerOrderModel::metadata()->getDbTableName());

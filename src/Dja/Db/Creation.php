@@ -3,6 +3,7 @@
 namespace Dja\Db;
 
 use Dja\Db\Model\Field\ForeignKey;
+use Dja\Db\Model\Field\ManyToMany;
 use Dja\Db\Model\Metadata;
 use Doctrine\DBAL\Platforms\AbstractPlatform;
 use Doctrine\DBAL\Schema\Table;
@@ -15,6 +16,7 @@ class Creation
 {
     public $generateQueue = [];
     public $generated = [];
+    public $md2tableCache = [];
 
     /**
      * @var \Doctrine\DBAL\Connection
@@ -45,32 +47,40 @@ class Creation
     /**
      * ->processQueueCallback(function (\Dja\Db\Model\Metadata $metadata, \Doctrine\DBAL\Schema\Table $table, array $sql, \Doctrine\DBAL\Connection $db) {})
      * @param callable $callBack
-     * @param bool $autoExecute
      */
-    public function processQueueCallback(\Closure $callBack, $autoExecute = false)
+    public function processQueueCallback(\Closure $callBack)
     {
-        $autoExecQueue = [];
+        $callbackQueue = [];
         while (count($this->generateQueue)) {
             $modelName = array_shift($this->generateQueue);
             try {
                 /** @var Metadata $metadata */
                 $metadata = $modelName::metadata();
-                if ($this->db->getSchemaManager()->tablesExist($metadata->getDbTableName())) {
+                $tblName = $metadata->getDbTableName();
+                if ($this->db->getSchemaManager()->tablesExist($tblName)) {
+                    continue;
+                }
+                if (isset($this->generated[$tblName])) {
                     continue;
                 }
                 $table = $this->metadataToTable($metadata);
-                $sql = $this->dp->getCreateTableSQL($table, AbstractPlatform::CREATE_INDEXES | AbstractPlatform::CREATE_FOREIGNKEYS);
-                if ($autoExecute) {
-                    $autoExecQueue = array_merge($sql, $autoExecQueue);
+                $this->generated[$tblName] = 1;
+                $sql = $this->dp->getCreateTableSQL($table, AbstractPlatform::CREATE_INDEXES);
+                array_unshift($callbackQueue, [$metadata, $table, $sql]);
+                $fks = $table->getForeignKeys();
+                if (count($fks)) {
+                    $sql = [];
+                    foreach ($fks as $fk) {
+                        $sql[] = $this->dp->getCreateForeignKeySQL($fk, $table);
+                    }
+                    array_push($callbackQueue, [$metadata, $table, $sql]);
                 }
-                $callBack($metadata, $table, $sql, $this->db);
             } catch (\Exception $e) {
+                pr($e->__toString());
             }
         }
-        if ($autoExecute) {
-            foreach ($autoExecQueue as $sql) {
-                $this->db->exec($sql);
-            }
+        foreach ($callbackQueue as $args) {
+            $callBack($args[0], $args[1], $args[2], $this->db);
         }
     }
 
@@ -81,8 +91,8 @@ class Creation
     public function metadataToTable(Metadata $metadata)
     {
         $tblName = $metadata->getDbTableName();
-        if (isset($this->generated[$tblName])) {
-            return $this->generated[$tblName];
+        if (isset($this->md2tableCache[$tblName])) {
+            return $this->md2tableCache[$tblName];
         }
         $cols = [];
         foreach ($metadata->getLocalFields() as $fieldObj) {
@@ -94,7 +104,7 @@ class Creation
             $cols[] = $col;
         }
         $table = new Table($tblName, $cols);
-        $this->generated[$tblName] = $table;
+        $this->md2tableCache[$tblName] = $table;
         foreach ($metadata->getLocalFields() as $fieldObj) {
             if ($fieldObj->unique) {
                 $table->addUniqueIndex([$fieldObj->db_column]);
@@ -106,9 +116,20 @@ class Creation
             }
             if ($this->followRelations === true && $fieldObj instanceof ForeignKey) {
                 $relationClass = $fieldObj->relationClass;
-                $relactionTable = $this->metadataToTable($relationClass::metadata());
-                $table->addForeignKeyConstraint($relactionTable, [$fieldObj->db_column], [$fieldObj->to_field]);
+                $relationTable = $this->metadataToTable($relationClass::metadata());
+                $table->addForeignKeyConstraint($relationTable, [$fieldObj->db_column], [$fieldObj->to_field]);
                 $this->generateQueue[] = $relationClass;
+            }
+        }
+        if ($this->followRelations === true) {
+            foreach ($metadata->getRelationFields() as $fieldObj) {
+                if ($fieldObj instanceof ManyToMany) {
+                    if ($fieldObj->throughClass) {
+                        $throughClass = $fieldObj->throughClass;
+                        //$this->metadataToTable($throughClass::metadata());
+                        $this->generateQueue[] = $throughClass;
+                    }
+                }
             }
         }
         return $table;

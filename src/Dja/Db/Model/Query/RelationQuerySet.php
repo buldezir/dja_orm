@@ -45,44 +45,80 @@ class RelationQuerySet extends QuerySet
      * @return $this
      * @throws \BadMethodCallException
      */
-    public function add(Model $model)
+    public function add($model)
     {
         /** @var Model[] $list */
-        $list = func_get_args();
+        if ($model instanceof QuerySet) {
+            $list = $model;
+        } else {
+            $list = func_get_args();
+        }
         if ($this->ownerField instanceof SingleRelation) {
             foreach ($list as $model) {
                 $model->__set($this->ownerField->to_field, $this->ownerModel);
                 $model->save();
             }
         } elseif ($this->ownerField instanceof ManyToManyRelation) {
-            // @todo m2m link
+            if ($this->ownerField->throughClass) {
+                $throughClass = $this->ownerField->throughClass;
+                foreach ($list as $model) {
+                    $model->save();
+                    /** @var Model $link */
+                    $link = new $throughClass;
+                    $link->__set($this->ownerField->self_field, $this->ownerModel);
+                    $link->__set($this->ownerField->to_field, $model);
+                    $link->save();
+                }
+            } else {
+
+            }
         } else {
             throw new \BadMethodCallException('Cant modify query set for field ' . $this->ownerField->name);
         }
-        $this->resetStatement();
+        //$this->resetStatement();
         return $this;
     }
 
     /**
      * @param Model $model
      * @return $this
+     * @throws \InvalidArgumentException
      * @throws \BadMethodCallException
      */
-    public function remove(Model $model)
+    public function remove($model)
     {
         /** @var Model[] $list */
-        $list = func_get_args();
+        if ($model instanceof QuerySet) {
+            $list = $model;
+        } else {
+            $list = func_get_args();
+        }
         if ($this->ownerField instanceof SingleRelation) {
             foreach ($list as $model) {
+                if ($model->isNewRecord()) {
+                    throw new \InvalidArgumentException('Cant remove record that is not saved');
+                }
                 $model->__unset($this->ownerField->to_field);
                 $model->save();
             }
         } elseif ($this->ownerField instanceof ManyToManyRelation) {
-            // @todo m2m unlink
+            if ($this->ownerField->throughClass) {
+                $throughClass = $this->ownerField->throughClass;
+                $in = [];
+                foreach ($list as $model) {
+                    if ($model->isNewRecord()) {
+                        throw new \InvalidArgumentException('Cant remove record that is not saved');
+                    }
+                    $in[] = $model->__get($this->ownerField->to_field);
+                }
+                foreach ($throughClass::objects()->filter([$this->ownerField->to_field . '__in' => $in]) as $link) {
+                    $link->delete();
+                }
+            }
         } else {
             throw new \BadMethodCallException('Cant modify query set for field ' . $this->ownerField->name);
         }
-        $this->resetStatement();
+        //$this->resetStatement();
         return $this;
     }
 }

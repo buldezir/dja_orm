@@ -1,15 +1,17 @@
 <?php
-/**
- * User: Alexander.Arutyunov
- * Date: 29.11.13
- * Time: 15:43
- */
 
 namespace Dja\Db\Model\Util;
 
+use Dja\Db\Model\Model;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\EventDispatcher\GenericEvent as Event;
 
+/**
+ * DEMO CLASS
+ *
+ * Class HistroryWriteSubscriber
+ * @package Dja\Db\Model\Util
+ */
 class HistroryWriteSubscriber implements EventSubscriberInterface
 {
     protected $historyModelName;
@@ -31,7 +33,9 @@ class HistroryWriteSubscriber implements EventSubscriberInterface
         /** @var \Dja\Db\Model\Metadata $historyMD */
         $historyMD = $hClass::metadata();
         //array_intersect(array_keys($historyMD->getLocalFields()), array_keys($model::metadata()->getLocalFields()));
+        /** @var Model $hModel */
         $hModel = new $hClass($model->getChangedValues());
+        $hModel->save();
     }
 
     public function onBeforeDelete(Event $event)
@@ -40,7 +44,7 @@ class HistroryWriteSubscriber implements EventSubscriberInterface
             /** @var \Dja\Db\Model\Model $model */
             $model = $event->getSubject();
             echo 'write is_deleted';
-            $model->is_cc_sent = 1;
+            $model->is_deleted = true;
             $model->save();
             $event->stopPropagation();
             return false;
@@ -52,6 +56,11 @@ class HistroryWriteSubscriber implements EventSubscriberInterface
         /** @var \Dja\Db\Model\Model $model */
         $model = $event->getSubject();
         var_dump('deleting all history for: ' . $model);
+        $hClass = $this->historyModelName;
+        $qs = $hClass::objects()->filter([$model::metadata()->getPrimaryKey() => $model->pk]);
+        foreach ($qs as $row) {
+            $row->delete();
+        }
     }
 
     /**

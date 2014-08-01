@@ -377,6 +377,8 @@ abstract class BaseQuerySet extends DataIterator implements \ArrayAccess
             } elseif ($value instanceof QuerySet) {
                 $value = strval($value->valuesList('pk', false));
             } elseif ($value instanceof ValuesListQuerySet) {
+            } elseif ($value instanceof Model) {
+                $value = $field->dbPrepLookup($value);
             } else {
                 $value = $this->db->quote($value);
             }

@@ -1,9 +1,4 @@
 <?php
-/**
- * User: Alexander.Arutyunov
- * Date: 02.08.13
- * Time: 13:09
- */
 
 namespace Dja\Db\Model\Field;
 
@@ -24,9 +19,9 @@ class ManyToMany extends Relation implements ManyToManyRelation
     public function __construct(array $options = [])
     {
         $this->_options['self_field'] = null;
-        $this->_options['db_table'] = null;
         $this->_options['limit_choices_to'] = null;
         $this->_options['throughClass'] = null;
+        $this->_options['db_table'] = null;
 
         parent::__construct($options);
 
@@ -57,10 +52,6 @@ class ManyToMany extends Relation implements ManyToManyRelation
         if ($this->limit_choices_to !== null && !is_array($this->limit_choices_to)) {
             throw new \Exception('"limit_choices_to" must be argument array for model::objects()->filter()');
         }
-        if (!$this->throughClass && !$this->db_table) {
-            throw new \Exception('Must provide "throughClass" or "db_table" option');
-        }
-
         if ($this->to_field === null) {
             $this->setOption('to_field', $this->getRelationMetadata()->getPrimaryKey());
         }
@@ -69,6 +60,10 @@ class ManyToMany extends Relation implements ManyToManyRelation
         }
         if ($this->related_name === null) {
             $this->setOption('related_name', $this->metadata->getDbTableName() . '_set');
+        }
+        if (!$this->throughClass && !$this->db_table) {
+            //throw new \Exception('Must provide "throughClass" or "db_table" option');
+            $this->_setUpThroughClass();
         }
         if ($this->throughClass) {
             $throughClass = $this->throughClass;
@@ -79,20 +74,54 @@ class ManyToMany extends Relation implements ManyToManyRelation
         }
     }
 
+    protected function _setUpThroughClass()
+    {
+        $throughClassName = $this->ownerClass . 'To' . $this->relationClass;
+        $self_field = $this->metadata->getDbTableName();
+        $to_field = $this->getRelationMetadata()->getDbTableName();
+        //$db_table = $this->metadata->getDbTableName() . '_to_' . $this->getRelationMetadata()->getDbTableName();
+        $db_table = $self_field . '_to_' . $to_field;
+        $classCode = "
+        class {$throughClassName} extends \\Dja\\Db\\Model\\Model
+        {
+            protected static \$dbtable = '{$db_table}';
+            protected static \$fields = [
+                '{$self_field}' => ['ForeignKey', 'relationClass' => '{$this->ownerClass}', 'db_column' => '{$this->self_field}'],
+                '{$to_field}' => ['ForeignKey', 'relationClass' => '{$this->relationClass}', 'db_column' => '{$this->to_field}'],
+            ];
+        }
+        ";
+        eval($classCode);
+        $this->db_table = $db_table;
+        $this->throughClass = $throughClassName;
+        $throughClassName::metadata();
+    }
+
     /**
      * modify related model metadata to setup virtual field pointing to this model queryset
      */
     protected function _setupBackwardsRelation()
     {
         $ownerClass = $this->getOption('ownerClass');
-        $options = array(
-            'ManyToMany',
-            'relationClass' => $ownerClass,
-            'self_field' => $this->to_field,
-            'to_field' => $this->self_field,
-            'db_table' => $this->db_table,
-            'noBackwards' => true,
-        );
+        if ($this->throughClass) {
+            $options = array(
+                'ManyToMany',
+                'relationClass' => $ownerClass,
+                'self_field' => $this->to_field,
+                'to_field' => $this->self_field,
+                'throughClass' => $this->throughClass,
+                'noBackwards' => true,
+            );
+        } else {
+            $options = array(
+                'ManyToMany',
+                'relationClass' => $ownerClass,
+                'self_field' => $this->to_field,
+                'to_field' => $this->self_field,
+                'db_table' => $this->db_table,
+                'noBackwards' => true,
+            );
+        }
         $this->getRelationMetadata()->addField($this->related_name, $options);
     }
 
@@ -114,7 +143,6 @@ class ManyToMany extends Relation implements ManyToManyRelation
             //$in = $relationClass::objects()->setRawSql($sql)->valuesDict($this->to_field, $this->to_field);
             $in = Expr($sql);
         }
-
 
         if ($this->limit_choices_to) {
             $filter = $this->limit_choices_to;

@@ -230,34 +230,6 @@ abstract class Model implements \ArrayAccess
     }
 
     /**
-     * dispatch global and local model events
-     * no event objects created if no listeners attached
-     * return false if some event stop propagation (means u need to cancel dependent actions)
-     * @param string $eventName
-     * @return bool
-     */
-    protected function eventDispatch($eventName)
-    {
-        if (Model::events()->hasListeners($eventName)) {
-            $e = new Event($this);
-            Model::events()->dispatch($eventName, $e);
-            if ($e->isPropagationStopped()) {
-                return false;
-            }
-        }
-        if ($this->metadata->events()->hasListeners($eventName)) {
-            if (!isset($e)) {
-                $e = new Event($this);
-            }
-            $this->metadata->events()->dispatch($eventName, $e);
-            if ($e->isPropagationStopped()) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    /**
      * set defaults from metadata
      * @param bool $force force default even if value exists
      * @return $this
@@ -275,45 +247,112 @@ abstract class Model implements \ArrayAccess
     }
 
     /**
-     * @param $field
-     * @param $errors
-     * @return $this
+     * @param $alias
+     * @return mixed
      */
-    protected function addValidationError($field, $errors)
+    protected function _get($alias)
     {
-        if (!isset($this->validationErrors[$field])) {
-            $this->validationErrors[$field] = [];
-        }
-        if (is_array($errors)) {
-            foreach ($errors as $err) {
-                $this->validationErrors[$field][] = $err;
+        $field = $this->metadata->getField($alias);
+        if ($this->metadata->isLocal($alias)) {
+            return isset($this->data[$alias]) ? $this->data[$alias] : null;
+        } elseif ($this->metadata->isVirtual($alias)) {
+            if ($field instanceof Relation) {
+                return $this->getLazyRelation($field);
+            } elseif ($field instanceof Virtual) {
+                return $field->getProcessedValue($this);
+            } else {
+                return isset($this->data[$field->db_column]) ? $this->data[$field->db_column] : null;
             }
         } else {
-            $this->validationErrors[$field][] = $errors;
+            return isset($this->data[$alias]) ? $this->data[$alias] : null;
         }
-        return $this;
     }
 
     /**
-     * @return array
+     * @param $alias
+     * @param $value
+     * @param bool $raw
+     * @throws \InvalidArgumentException
+     * @throws \Exception
      */
-    public function validate()
+    protected function _set($alias, $value, $raw = false)
     {
-        foreach ($this->data as $key => $value) {
-            $field = $this->metadata->getField($key);
-            try {
-                $field->validate($value);
-            } catch (ValidationError $e) {
-                $this->addValidationError($field->name, $e->getMessages());
-            } catch (\Exception $e) {
-                $this->addValidationError($field->name, $e->getMessage());
-                $prev = $e;
-                while ($prev = $prev->getPrevious()) {
-                    $this->addValidationError($field->name, $prev->getMessage());
-                }
+        $field = $this->metadata->getField($alias);
+        if ($this->inited === true && $field->editable === false) {
+            throw new \Exception("Field '{$alias}' is read-only");
+        }
+        if (!($field->null && $value === null)) {
+            if ($raw) {
+                $value = $field->fromDbValue($value);
+            } else {
+                $value = $field->cleanValue($value);
             }
         }
-        return $this->validationErrors;
+
+        if ($this->metadata->isLocal($alias)) {
+            if ($field->isRelation() && is_object($value)) {
+                $this->data[$field->name] = $value;
+                $value = $field->dbPrepValue($value);
+            }
+            $this->data[$alias] = $value;
+        } elseif ($this->metadata->isVirtual($alias)) {
+            if ($field->isRelation()) {
+                $this->relationDataCache[$alias] = $value;
+                $this->data[$field->db_column] = $field->dbPrepValue($value);
+            } else {
+                $this->data[$field->db_column] = $value;
+            }
+        }
+    }
+
+    /**
+     * @param string $name
+     * @return mixed|int
+     * @throws \OutOfRangeException
+     */
+    public function __get($name)
+    {
+        $getter = $this->metadata->getterName($name);
+        if ($getter) {
+            return $this->$getter();
+        } else {
+            return $this->_get($name);
+        }
+    }
+
+    /**
+     * @param string $name
+     * @param mixed $value
+     * @return void
+     */
+    public function __set($name, $value)
+    {
+        $setter = $this->metadata->setterName($name);
+        if ($setter) {
+            $this->$setter($value);
+        } else {
+            $this->_set($name, $value);
+        }
+    }
+
+    /**
+     * @param $name
+     * @param string $name
+     * @return bool
+     */
+    public function __isset($name)
+    {
+        return isset($this->metadata->$name) && $this->$name !== null;
+    }
+
+    /**
+     * @param $name
+     * @return void
+     */
+    public function __unset($name)
+    {
+        //unset($this->data[$name]);
+        $this->__set($name, null);
     }
 
     /**
@@ -331,7 +370,7 @@ abstract class Model implements \ArrayAccess
                     unset($data[$this->metadata->pk->db_column]);
                 }
                 $newPK = static::objects()->doInsert($data);
-                $this->data[$this->metadata->pk->db_column] = $newPK;
+                $this->data[$this->metadata->getPrimaryKey()] = $newPK;
                 if (empty($newPK)) {
                     $this->isPersistable = false;
                 }
@@ -340,6 +379,8 @@ abstract class Model implements \ArrayAccess
                 //unset($updData[$this->metadata->pk->db_column]);
                 if (count($updData) > 0) {
                     static::objects()->filter(['pk' => $this->pk])->doUpdate($updData);
+                } else {
+                    return;
                 }
             }
             $this->eventDispatch(self::EVENT_AFTER_SAVE);
@@ -419,107 +460,73 @@ abstract class Model implements \ArrayAccess
     }
 
     /**
-     * @param $alias
-     * @return mixed
-     */
-    protected function _get($alias)
-    {
-        $field = $this->metadata->getField($alias);
-        if ($this->metadata->isLocal($alias)) {
-            return isset($this->data[$alias]) ? $this->data[$alias] : null;
-        } elseif ($this->metadata->isVirtual($alias)) {
-            if ($field instanceof Relation) {
-                return $this->getLazyRelation($field);
-            } elseif ($field instanceof Virtual) {
-                return $field->getProcessedValue($this);
-            } else {
-                return isset($this->data[$field->db_column]) ? $this->data[$field->db_column] : null;
-            }
-        } else {
-            return isset($this->data[$alias]) ? $this->data[$alias] : null;
-        }
-    }
-
-    /**
-     * @param $alias
-     * @param $value
-     * @param bool $raw
-     * @throws \InvalidArgumentException
-     * @throws \Exception
-     */
-    protected function _set($alias, $value, $raw = false)
-    {
-        $field = $this->metadata->getField($alias);
-        if ($this->inited === true && $field->editable === false) {
-            throw new \Exception("Field '{$alias}' is read-only");
-        }
-        if (!($field->null && $value === null)) {
-            if ($raw) {
-                $value = $field->fromDbValue($value);
-            } else {
-                $value = $field->cleanValue($value);
-            }
-        }
-        if ($this->metadata->isLocal($alias)) {
-            $this->data[$alias] = $value;
-        } elseif ($this->metadata->isVirtual($alias)) {
-            if ($field->isRelation()) {
-                $this->relationDataCache[$alias] = $value;
-                $this->data[$field->db_column] = $value->__get($field->to_field);
-            } else {
-                $this->data[$field->db_column] = $value;
-            }
-        }
-    }
-
-    /**
-     * @param string $name
-     * @return mixed|int
-     * @throws \OutOfRangeException
-     */
-    public function __get($name)
-    {
-        $getter = $this->metadata->getterName($name);
-        if ($getter) {
-            return $this->$getter();
-        } else {
-            return $this->_get($name);
-        }
-    }
-
-    /**
-     * @param string $name
-     * @param mixed $value
-     * @return void
-     */
-    public function __set($name, $value)
-    {
-        $setter = $this->metadata->setterName($name);
-        if ($setter) {
-            $this->$setter($value);
-        } else {
-            $this->_set($name, $value);
-        }
-    }
-
-    /**
-     * @param $name
-     * @param string $name
+     * dispatch global and local model events
+     * no event objects created if no listeners attached
+     * return false if some event stop propagation (means u need to cancel dependent actions)
+     * @param string $eventName
      * @return bool
      */
-    public function __isset($name)
+    protected function eventDispatch($eventName)
     {
-        return isset($this->metadata->$name) && $this->$name !== null;
+        if (Model::events()->hasListeners($eventName)) {
+            $e = new Event($this);
+            Model::events()->dispatch($eventName, $e);
+            if ($e->isPropagationStopped()) {
+                return false;
+            }
+        }
+        if ($this->metadata->events()->hasListeners($eventName)) {
+            if (!isset($e)) {
+                $e = new Event($this);
+            }
+            $this->metadata->events()->dispatch($eventName, $e);
+            if ($e->isPropagationStopped()) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
-     * @param $name
-     * @return void
+     * @param $field
+     * @param $errors
+     * @return $this
      */
-    public function __unset($name)
+    protected function addValidationError($field, $errors)
     {
-        //unset($this->data[$name]);
-        $this->__set($name, null);
+        if (!isset($this->validationErrors[$field])) {
+            $this->validationErrors[$field] = [];
+        }
+        if (is_array($errors)) {
+            foreach ($errors as $err) {
+                $this->validationErrors[$field][] = $err;
+            }
+        } else {
+            $this->validationErrors[$field][] = $errors;
+        }
+        return $this;
+    }
+
+    /**
+     * @return array
+     */
+    public function validate()
+    {
+        foreach ($this->data as $key => $value) {
+            $field = $this->metadata->getField($key);
+            try {
+                $field->validate($value);
+            } catch (ValidationError $e) {
+                $this->addValidationError($field->name, $e->getMessages());
+            } catch (\Exception $e) {
+                $this->addValidationError($field->name, $e->getMessage());
+                $prev = $e;
+                while ($prev = $prev->getPrevious()) {
+                    $this->addValidationError($field->name, $prev->getMessage());
+                }
+            }
+        }
+        return $this->validationErrors;
     }
 
     /**

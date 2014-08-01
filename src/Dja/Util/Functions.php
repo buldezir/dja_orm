@@ -341,12 +341,31 @@ function collectModels()
     return $result;
 }
 
-function initModels()
+/**
+ * @param array $modelClasses
+ */
+function initModels(array $modelClasses)
 {
-    $modelClasses = collectModels();
     foreach ($modelClasses as $modelClass) {
         $modelClass::metadata();
     }
+}
+
+/**
+ * @param $file
+ * @return array
+ * @throws Exception
+ */
+function includeAndInitModels($file)
+{
+    if (!file_exists($file)) {
+        throw new \Exception(sprintf('File "%s" not exist', $file));
+    }
+    $gdc1 = get_declared_classes();
+    require_once $file;
+    $classes = array_diff(get_declared_classes(), $gdc1);
+    initModels($classes);
+    return $classes;
 }
 
 /**

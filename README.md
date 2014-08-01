@@ -19,6 +19,8 @@ With composer
 }        
 ```
     php composer.phar install
+or
+    php composer.phar require buldezir/dja_orm:dev-master
 
 Usage
 -----
@@ -51,6 +53,12 @@ class Role extends Model
         'can_do_smth3'  =>['Bool', 'default' => false],
     );
 }
+$creation = new \Dja\Db\Creation($dbConn, ['User', 'Role']);
+$creation->processQueueCallback(function (\Dja\Db\Model\Metadata $metadata, \Doctrine\DBAL\Schema\Table $table, array $sql, \Doctrine\DBAL\Connection $db) {
+    foreach ($sql as $sqlstmt) {
+        $db->exec($sqlstmt);
+    }
+});
 ```
 Or from database structure
 ```php
@@ -99,6 +107,8 @@ foreach($dict as $userId => $userName){}
 // raw query 
 $iteratorOverModels = User::objects()->raw('SELECT * FROM users');
 $iteratorOverArrays = User::objects()->raw('SELECT * FROM users')->returnValues();
+// raw query with placeholders and autoreplacements
+$iteratorOverArrays = User::objects()->raw('SELECT :pk, :role FROM :t WHERE :pk < :maxPK', [':maxPK' => 10])->returnValues(); // = 'SELECT user_id, role_id FROM users WHERE user_id < 10'
 
 // iterate fetching $chunkSize chunks
 $chunkSize = 1000;
@@ -155,5 +165,24 @@ class TestModel2 extends TestModel
     }
 }
 ```
+**Abstract models**
+```php
+abstract class BaseObjectModel
+{
+    protected static $fields = array(
+        'date_added'   => ['DateTime', 'autoInsert' => true],
+        'date_updated' => ['DateTime', 'autoUpdate' => true],
+        'user'         => ['ForeignKey', 'relationClass' => 'User'],
+    );
+}
 
-// testhooks
+class Article extends BaseObjectModel
+{
+    protected static $fields = array(
+        'header' => ['Char'],
+        'text'   => ['Text'],
+        'slug'   => ['Slug', 'prepopulate_field' => 'header'],
+    );
+}
+// So Article model will have fields: header, text, slug, date_added, date_updated, user
+```

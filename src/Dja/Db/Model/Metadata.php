@@ -45,9 +45,9 @@ class Metadata
     protected $_localFields = [];
 
     /**
-     * @var Field\Base[]
+     * @var Field\Relation[]
      */
-    protected $_many2manyFields = [];
+    protected $_relationFields = [];
 
     /**
      * @var Field\Base[]
@@ -222,9 +222,9 @@ class Metadata
     public function removeField($name)
     {
         $f = $this->getField($name);
-        unset($this->_allFields[$name], $this->_localFields[$name], $this->_many2manyFields[$name], $this->_virtualFields[$name]);
+        unset($this->_allFields[$name], $this->_localFields[$name], $this->_relationFields[$name], $this->_virtualFields[$name]);
         if ($f->db_column) {
-            unset($this->_allFields[$f->db_column], $this->_localFields[$f->db_column], $this->_many2manyFields[$f->db_column], $this->_virtualFields[$f->db_column]);
+            unset($this->_allFields[$f->db_column], $this->_localFields[$f->db_column], $this->_relationFields[$f->db_column], $this->_virtualFields[$f->db_column]);
         }
         return $this;
     }
@@ -294,11 +294,12 @@ class Metadata
             throw new \Exception("Cant be fields with same db_column! ($fieldObj->db_column)");
         }
         if ($fieldObj instanceof Field\ManyRelation) {
-            $this->_many2manyFields[$name] = $fieldObj;
+            $this->_relationFields[$name] = $fieldObj;
             $this->addAlias($name, $fieldObj);
         } elseif ($fieldObj instanceof Field\SingleRelation) {
             $this->_localFields[$fieldObj->db_column] = $fieldObj;
             $this->_allFields[$fieldObj->db_column] = $fieldObj;
+            $this->_relationFields[$name] = $fieldObj;
             $this->addAlias($name, $fieldObj);
         } elseif ($fieldObj instanceof Field\Virtual) {
             $this->addAlias($name, $fieldObj);
@@ -319,6 +320,10 @@ class Metadata
     {
         foreach ($this->fieldsTmp as $name => $options) {
             $this->_addField($name, $options);
+        }
+        // add Primary key field if not defined
+        if (!isset($this->pk)) {
+            $this->addField($this->getDbTableName() . '_id', ['Auto']);
         }
         $this->events()->dispatch(self::EVENT_AFTER_INIT, new Event($this, $this->fieldsTmp));
         unset($this->fieldsTmp);
@@ -347,21 +352,6 @@ class Metadata
         $result = [];
         foreach ($this->_localFields as $name => $fieldObj) {
             $result[$fieldObj->db_column] = $fieldObj->default;
-        }
-        return $result;
-    }
-
-    /**
-     *
-     * @return Field\Base[]
-     */
-    public function getRelationFields()
-    {
-        $result = [];
-        foreach ($this->_localFields as $name => $fieldObj) {
-            if ($fieldObj->isRelation()) {
-                $result[$fieldObj->db_column] = $fieldObj;
-            }
         }
         return $result;
     }
@@ -455,11 +445,12 @@ class Metadata
     }
 
     /**
-     * @return Field\Base[]
+     *
+     * @return Field\Relation[]
      */
-    public function getMany2ManyFields()
+    public function getRelationFields()
     {
-        return $this->_many2manyFields;
+        return $this->_relationFields;
     }
 
     /**
@@ -511,9 +502,9 @@ class Metadata
      * @param $key
      * @return bool
      */
-    public function isM2M($key)
+    public function isRelation($key)
     {
-        return isset($this->_many2manyFields[$key]);
+        return isset($this->_relationFields[$key]);
     }
 
     /**
@@ -572,6 +563,18 @@ class Metadata
     }
 
     /**
+     * @return string|null
+     */
+    public function getPrimaryKeySequence()
+    {
+        if ($this->getDbConnection()->getDatabasePlatform()->supportsSequences()) {
+            return $this->getDbTableName() . '_' . $this->getPrimaryKey() . '_seq';
+        } else {
+            return null;
+        }
+    }
+
+    /**
      * @return string
      */
     public function getModelClass()
@@ -592,16 +595,16 @@ class Metadata
      */
     public static function getDefaultDbConnection()
     {
-        if (null === self::$defaultDbConn) {
-            self::$defaultDbConn = \Doctrine\DBAL\DriverManager::getConnection(array(
-                'driver' => 'pdo_pgsql',
-                'dbname' => 'sasha',
-                'user' => 'sasha',
-                'password' => '',
-                'host' => 'localhost',
-                //'port' => 6432,
-            ));
-        }
+//        if (null === self::$defaultDbConn) {
+//            self::$defaultDbConn = \Doctrine\DBAL\DriverManager::getConnection(array(
+//                'driver' => 'pdo_pgsql',
+//                'dbname' => 'sasha',
+//                'user' => 'sasha',
+//                'password' => '',
+//                'host' => 'localhost',
+//                //'port' => 6432,
+//            ));
+//        }
         return self::$defaultDbConn;
     }
 
