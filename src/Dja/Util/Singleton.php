@@ -11,6 +11,9 @@ abstract class Singleton
 {
     protected static $_instCache = array();
 
+    /**
+     * @return static
+     */
     public static function getInstance()
     {
         $class = get_called_class();

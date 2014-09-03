@@ -5,17 +5,19 @@ namespace Dja\Db\Model\Query;
 use Dja\Db\Model\Field\Relation;
 use Dja\Db\Model\Metadata;
 use Dja\Db\Model\Model;
+use Doctrine\DBAL\Connection;
+use Traversable;
 
 /**
  * Class Manager
  * @package Dja\Db\Model\Query
  */
-class Manager
+class Manager implements \IteratorAggregate
 {
     /**
      * @var array
      */
-    protected static $instances = array();
+    protected static $instances = [];
 
     /**
      * @var Metadata
@@ -53,6 +55,14 @@ class Manager
     }
 
     /**
+     * @return QuerySet|Traversable
+     */
+    public function getIterator()
+    {
+        return $this->getQuerySet();
+    }
+
+    /**
      * @param bool $distinct
      * @return int
      */
@@ -87,6 +97,15 @@ class Manager
     public function getOrCreate(array $arguments)
     {
         return $this->getQuerySet()->getOrCreate($arguments);
+    }
+
+    /**
+     * @param Connection $db
+     * @return QuerySet|Model[]
+     */
+    public function using(Connection $db)
+    {
+        return new QuerySet($this->metadata, null, $db);
     }
 
     /**

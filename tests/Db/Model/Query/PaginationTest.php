@@ -29,4 +29,15 @@ class PaginationTest extends PHPUnit_Framework_TestCase
             $this->assertInstanceOf('\\CustomerOrderModel', $obj);
         }
     }
+
+    public function testRanges()
+    {
+        $q = CustomerOrderModel::objects();
+        $paginator = new \Dja\Db\Model\Query\Pagination($q, 3, 10);
+        $this->assertCount(5, $paginator->getPagesArray());
+
+        foreach ($paginator->getPagesIterator() as $p) {
+            $this->assertTrue(($p >= $paginator->getFirstPage() && $p <= $paginator->getLastPage()));
+        }
+    }
 }

@@ -39,6 +39,14 @@ class ModelTest extends PHPUnit_Framework_TestCase
         ]);
         $obj1->user = $relObj1;
         $this->assertEquals($relObj1->user_id, $obj1->user_id);
+
+
+        $obj2 = new CustomerOrderModel();
+        $relObj2 = new UserModel([
+            'user_id' => 1,
+        ]);
+        $obj2->user_id = $relObj2;
+        $this->assertEquals($relObj2->user_id, $obj2->user_id);
     }
 
     public function testSetupDefaultValues()
@@ -67,6 +75,20 @@ class ModelTest extends PHPUnit_Framework_TestCase
         $obj->username = 'testtest';
         $obj->refresh();
         $this->assertEquals($initial, $obj->username);
+    }
+
+    public function testGetSet()
+    {
+        $obj = new UserModel;
+        $obj->ip = '1.1.1.1';
+        $this->assertEquals('ip:1.1.1.1', $obj->ip);
+    }
+
+    public function testArrayAccess()
+    {
+        $obj = new UserModel;
+        $obj['ip'] = '1.1.1.1';
+        $this->assertEquals('ip:1.1.1.1', $obj['ip']);
     }
 
     public function testToArray()

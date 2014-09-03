@@ -126,4 +126,11 @@ class QuerySetTest extends PHPUnit_Framework_TestCase
         $countQ2 = count(SqlLog::$log->queries);
         $this->assertEquals(2, $countQ2 - $countQ1);
     }
+
+    public function testUsing()
+    {
+        $conn = Dja\Db\Model\Metadata::getDefaultDbConnection();
+        $q = UserModel::objects()->limit(5)->using($conn);
+        $q->count();
+    }
 }

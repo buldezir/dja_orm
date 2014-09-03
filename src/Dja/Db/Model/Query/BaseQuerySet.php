@@ -6,7 +6,6 @@ use Dja\Db\Model\Metadata;
 use Dja\Db\Model\Model;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Query\Expression\CompositeExpression;
-use Doctrine\DBAL\Query\QueryBuilder;
 
 /**
  * Class BaseQuerySet
@@ -20,7 +19,7 @@ abstract class BaseQuerySet extends DataIterator implements \ArrayAccess
     protected $metadata;
 
     /**
-     * @var \Doctrine\DBAL\Query\QueryBuilder
+     * @var QueryBuilder
      */
     protected $qb;
 
@@ -66,9 +65,10 @@ abstract class BaseQuerySet extends DataIterator implements \ArrayAccess
         if (null !== $qb) {
             $this->qb = $qb;
         } else {
-            $this->qb = $this->db->createQueryBuilder()->from($this->qi($metadata->getDbTableName()), $this->qi('t'));
+            $this->qb = new QueryBuilder($this->db);
+            $this->qb->from($this->qi($metadata->getDbTableName()), $this->qi('t'));
         }
-        $this->lookuper = \Dja\Db\Model\Lookup\LookupAbstract::factory($this->db);
+        $this->lookuper = \Dja\Db\Model\Lookup\LookupAbstract::getInstance($this->db);
     }
 
     /**
@@ -84,13 +84,14 @@ abstract class BaseQuerySet extends DataIterator implements \ArrayAccess
 
     /**
      * @param Connection $db
-     * @throws \Exception
+     * @return BaseQuerySet
      */
-    public function using(Connection $db = null)
+    public function using(Connection $db)
     {
-        throw new \Exception('Not implemented');
-//        $qs = new static($this->metadata, null, $db);
-//        return $qs->importMethodCalls($this->methodCalls);
+        $copy = clone $this;
+        $copy->_qb()->setConnection($db);
+        $copy->db = $db;
+        return $copy;
     }
 
     /**
@@ -427,9 +428,28 @@ abstract class BaseQuerySet extends DataIterator implements \ArrayAccess
         return $this;
     }
 
+    /**
+     * @return QueryBuilder
+     */
     public function _qb()
     {
         return $this->qb;
+    }
+
+    /**
+     * @return \Dja\Db\Model\Lookup\LookupAbstract
+     */
+    public function _lp()
+    {
+        return $this->lookuper;
+    }
+
+    /**
+     * @return Metadata
+     */
+    public function _md()
+    {
+        return $this->metadata;
     }
 
     /**

@@ -102,6 +102,7 @@ class Metadata
         $this->modelClassName = $modelClass;
         $this->eventd = new EventDispatcher();
         $this->collectConfig($refl);
+        $this->collectGettersSetters($refl);
     }
 
     /**

@@ -111,6 +111,19 @@ class RawQuerySet extends DataIterator
     }
 
     /**
+     * @param Connection $db
+     * @return RawQuerySet
+     */
+    public function using(Connection $db)
+    {
+//        $this->db = $db;
+//        return $this;
+        $copy = clone $this;
+        $copy->db = $db;
+        return $copy;
+    }
+
+    /**
      * @return mixed|string
      */
     protected function buildQuery()

@@ -8,7 +8,6 @@ use Dja\Db\Model\Field\SingleRelation;
 use Dja\Db\Model\Metadata;
 use Dja\Db\Model\Model;
 use Doctrine\DBAL\Connection;
-use Doctrine\DBAL\Query\QueryBuilder;
 
 /**
  * Class RelationQuerySet

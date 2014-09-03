@@ -2,6 +2,7 @@
 
 namespace Dja\Db\Model\Query;
 
+use Dja\Db\Model\Model;
 use Doctrine\Common\Cache\Cache;
 use Doctrine\Common\Cache\PhpFileCache;
 
@@ -33,7 +34,6 @@ class QueryCache implements \Countable, \Iterator
      * @param QuerySet $q
      * @param int $lifeTime
      * @param Cache $cacheBackend
-     * todo: fix for new QuerySet types
      */
     public function __construct(QuerySet $q, $lifeTime = 3600, Cache $cacheBackend = null)
     {
@@ -43,14 +43,14 @@ class QueryCache implements \Countable, \Iterator
         } else {
             $this->cache = new PhpFileCache(DJA_APP_CACHE);
         }
-        $cacheKey = $q->getMetadata()->getDbTableName() . '_' . sha1(strval($q));
+        $cacheKey = $q->_md()->getDbTableName() . '_' . sha1(strval($q));
         if ($this->cache->contains($cacheKey)) {
             $data = $this->cache->fetch($cacheKey);
         } else {
             $data = $this->getData();
             $this->cache->save($cacheKey, $data, $lifeTime);
         }
-        $className = $q->getMetadata()->getModelClass();
+        $className = $q->_md()->getModelClass();
         foreach ($data as $rowData) {
             $this->data[] = new $className($rowData, false);
         }
@@ -63,7 +63,7 @@ class QueryCache implements \Countable, \Iterator
     {
         $data = $this->query->values();
         foreach ($data as $i => $row) {
-            $data[$i] = $this->query->mapAliasHash($row);
+            $data[$i] = $row;
         }
         return $data;
     }

@@ -4,7 +4,6 @@ namespace Dja\Db\Model\Query;
 
 use Dja\Db\Model\Metadata;
 use Doctrine\DBAL\Connection;
-use Doctrine\DBAL\Query\QueryBuilder;
 
 /**
  * Class ValuesListQuerySet

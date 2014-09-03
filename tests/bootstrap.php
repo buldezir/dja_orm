@@ -40,6 +40,18 @@ class UserModel extends Dja\Db\Model\Model
         'is_active' => ['Bool', 'default' => true],
         'ip' => ['Char', 'null' => true],
     ];
+
+    public function getIp()
+    {
+        return $this->_get('ip');
+    }
+
+    public function setIp($v)
+    {
+        if ($v != null) {
+            $this->_set('ip', 'ip:' . $v);
+        }
+    }
 }
 
 class CustomerOrderModel extends Dja\Db\Model\Model

@@ -291,7 +291,7 @@ abstract class Model implements \ArrayAccess
 
         if ($this->metadata->isLocal($alias)) {
             if ($field->isRelation() && is_object($value)) {
-                $this->data[$field->name] = $value;
+                $this->relationDataCache[$field->name] = $value;
                 $value = $field->dbPrepValue($value);
             }
             $this->data[$alias] = $value;
@@ -300,7 +300,7 @@ abstract class Model implements \ArrayAccess
                 $this->relationDataCache[$alias] = $value;
                 $this->data[$field->db_column] = $field->dbPrepValue($value);
             } else {
-                $this->data[$field->db_column] = $value;
+                $this->data[$field->db_column] = $value; // @todo unused?
             }
         }
     }

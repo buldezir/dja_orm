@@ -12,18 +12,51 @@ use Dja\Util\Inflector;
 abstract class LookupAbstract
 {
     /**
+     * @var array
+     */
+    protected static $instances = [];
+
+    /**
      * @var \Doctrine\DBAL\Connection
      */
     protected $db;
 
     /**
+     * @var \Closure[]
+     */
+    protected $customLookups = [];
+
+    /**
      * @param \Doctrine\DBAL\Connection $conn
      * @return LookupAbstract
      */
-    public static function factory($conn)
+    public static function getInstance(\Doctrine\DBAL\Connection $conn)
     {
         $className = '\\Dja\\Db\\Model\\Lookup\\' . ucfirst($conn->getDatabasePlatform()->getName());
-        return new $className($conn);
+        if (!isset(self::$instances[$className])) {
+            self::$instances[$className] = new $className($conn);
+        }
+        return self::$instances[$className];
+    }
+
+    /**
+     * $lkpr = \Dja\Db\Model\Lookup\LookupAbstract::getInstance($dbConn);
+     * $lkpr->add('mylookup', function (&$escapedField, $rawValue, $negate, $lookuper) {
+     *     $escapedField = '';
+     *     return 'user_id < '.$lookuper->getDb()->quote($rawValue).' AND lastname IS NOT NULL';
+     * });
+     * $qs = ModelUser::objects()->filter(['pk__mylookup' => 10]);
+     *
+     * @param $name
+     * @param callable $fn
+     * @throws \InvalidArgumentException
+     */
+    public function add($name, \Closure $fn)
+    {
+        if (array_key_exists($name, $this->customLookups)) {
+            throw new \InvalidArgumentException("Custom lookup with name '{$name}' already exist");
+        }
+        $this->customLookups[$name] = $fn;
     }
 
     abstract public function lookupYear(&$escapedField, &$rawValue, &$negate);
@@ -174,10 +207,14 @@ abstract class LookupAbstract
     public function getLookup($op, $escapedField, $rawValue, $negate = false)
     {
         $method = $this->getLookUpMethod($op);
-        if (!method_exists($this, $method)) {
+        if (method_exists($this, $method)) {
+            $lookupQ = $this->$method($escapedField, $rawValue, $negate);
+        } elseif (array_key_exists($op, $this->customLookups)) {
+            $fn = $this->customLookups[$op];
+            $lookupQ = $fn($escapedField, $rawValue, $negate, $this);
+        } else {
             throw new \Exception("unsupported operator '{$op}'");
         }
-        $lookupQ = $this->$method($escapedField, $rawValue, $negate);
         if ($negate) {
             $escapedField = 'NOT ' . $escapedField;
         }
@@ -199,7 +236,7 @@ abstract class LookupAbstract
      */
     public function issetLookup($op)
     {
-        return method_exists($this, $this->getLookUpMethod($op));
+        return method_exists($this, $this->getLookUpMethod($op)) || array_key_exists($op, $this->customLookups);
     }
 
     /**
@@ -208,5 +245,13 @@ abstract class LookupAbstract
     public function __construct(\Doctrine\DBAL\Connection $conn)
     {
         $this->db = $conn;
+    }
+
+    /**
+     * @return \Doctrine\DBAL\Connection
+     */
+    public function getDb()
+    {
+        return $this->db;
     }
 }
