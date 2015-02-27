@@ -87,6 +87,7 @@ class Introspection
                     $code = $this->generateClassForTable($tbl);
                     $callBack($tbl, $this->table2model($tbl), $code);
                 } catch (\Exception $e) {
+                    echo $e->getMessage() . PHP_EOL;
                 }
                 $this->generated[$tbl] = $tbl;
             }
@@ -105,6 +106,7 @@ class Introspection
                 $code = $this->generateClassForTable($tbl);
                 $callBack($tbl, $this->table2model($tbl), $code);
             } catch (\Exception $e) {
+                echo $e->getMessage() . PHP_EOL;
             }
         }
     }
@@ -200,9 +202,11 @@ class Introspection
             $conf['max_length'] = $col->getLength();
         }
         if ($col->getDefault() !== null) {
-            $conf['default'] = $col->getType()->convertToPHPValue($col->getDefault(), $this->dp);
-            if ($conf['default'] === '') {
-                $conf['blank'] = true;
+            if ($col->getDefault() !== 'CURRENT_TIMESTAMP') {
+                $conf['default'] = $col->getType()->convertToPHPValue($col->getDefault(), $this->dp);
+                if ($conf['default'] === '') {
+                    $conf['blank'] = true;
+                }
             }
         }
         if ($col->getComment() !== null) {

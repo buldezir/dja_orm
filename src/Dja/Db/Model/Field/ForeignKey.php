@@ -48,6 +48,9 @@ class ForeignKey extends Relation implements SingleRelation
 
     public function init()
     {
+        if ($this->relationClass === 'self') {
+            $this->setOption('relationClass', $this->ownerClass);
+        }
         if ($this->to_field === null) {
             $this->setOption('to_field', $this->getRelationMetadata()->getPrimaryKey());
         }
@@ -68,6 +71,9 @@ class ForeignKey extends Relation implements SingleRelation
      */
     protected function _setupBackwardsRelation()
     {
+        if ($this->ownerClass === $this->relationClass) {
+            return;
+        }
         if ($this->getRelationMetadata()->__isset($this->related_name)) {
             return;
         }

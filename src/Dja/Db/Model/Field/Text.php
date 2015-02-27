@@ -11,19 +11,24 @@ use Doctrine\DBAL\Types\Type;
  *
  * text field
  */
-class Text extends Char
+class Text extends Base
 {
-    public function toPhp($value)
-    {
-        return strval($value);
-    }
-
     /**
      * @return \Doctrine\DBAL\Schema\Column
      */
     public function getDoctrineColumn()
     {
         return new Column($this->db_column, Type::getType(Type::TEXT));
+    }
+
+    public function getPhpType()
+    {
+        return 'string';
+    }
+
+    public function toPhp($value)
+    {
+        return strval($value);
     }
 
     public function validate($value)
