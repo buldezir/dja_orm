@@ -72,29 +72,34 @@ class TimeStamp extends Base
         return new \DateTime('@' . $value);
     }
 
-    public function dbPrepValue(\DateTime $value)
+    public function dbPrepValue($value)
     {
+        if (!$value instanceof \DateTime) {
+            throw new \InvalidArgumentException("\$value must be insance of DateTime");
+        }
         return $value->getTimestamp();
     }
 
     protected function attachEvents()
     {
-        $class = $this->ownerClass;
-        $field = $this;
-        $this->metadata->events()->addListener($class::EVENT_BEFORE_SAVE, function (\Symfony\Component\EventDispatcher\GenericEvent $event) use ($field) {
-            /** @var \Dja\Db\Model\Model $model */
-            $model = $event->getSubject();
-            $fieldName = $field->db_column;
-            if ($field->autoInsert === true) {
-                if ($model->isNewRecord()) {
-                    $model->$fieldName = $field->getDefault();
+        if ($this->autoInsert || $this->autoUpdate) {
+            $class = $this->ownerClass;
+            $field = $this;
+            $this->metadata->events()->addListener($class::EVENT_BEFORE_SAVE, function (\Symfony\Component\EventDispatcher\GenericEvent $event) use ($field) {
+                /** @var \Dja\Db\Model\Model $model */
+                $model = $event->getSubject();
+                $fieldName = $field->db_column;
+                if ($field->autoInsert === true) {
+                    if ($model->isNewRecord()) {
+                        $model->$fieldName = $field->getDefault();
+                    }
                 }
-            }
-            if ($field->autoUpdate === true) {
-                if (!$model->isNewRecord()) {
-                    $model->$fieldName = $field->getDefault();
+                if ($field->autoUpdate === true) {
+                    if (!$model->isNewRecord()) {
+                        $model->$fieldName = $field->getDefault();
+                    }
                 }
-            }
-        });
+            });
+        }
     }
 }

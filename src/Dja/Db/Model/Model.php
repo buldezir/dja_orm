@@ -5,6 +5,7 @@ namespace Dja\Db\Model;
 use Dja\Db\Model\Field\Relation;
 use Dja\Db\Model\Field\Virtual;
 use Dja\Db\Model\Query\Manager;
+use Doctrine\DBAL\Connection;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\EventDispatcher\GenericEvent as Event;
 
@@ -100,6 +101,16 @@ abstract class Model implements \ArrayAccess
     public static function objects()
     {
         return Manager::getInstance(get_called_class());
+    }
+
+    /**
+     * @param Connection $db
+     * @return Manager
+     */
+    public static function using(Connection $db)
+    {
+        static::metadata()->using($db);
+        return static::objects();
     }
 
     /**

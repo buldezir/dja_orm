@@ -55,8 +55,8 @@ function chunkedIterator(\Dja\Db\Model\Query\BaseQuerySet $qs, $chunkSize = 1000
     foreach (xrange(0, $numIters - 1) as $offsetMultiplier) {
         $offset = $offsetMultiplier * $chunkSize;
         $qs->_qb()->setFirstResult($offset)->setMaxResults($chunkSize);
-        foreach ($qs as $row) {
-            yield $row;
+        foreach ($qs as $key => $row) {
+            yield $key => $row;
         }
     }
 }

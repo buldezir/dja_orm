@@ -4,6 +4,7 @@ namespace Dja\Db\Model;
 
 use Dja\Db\Model\Field\Base;
 use Dja\Util\Inflector;
+use Doctrine\DBAL\Connection;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\EventDispatcher\GenericEvent as Event;
 
@@ -14,7 +15,7 @@ class Metadata
     const EVENT_AFTER_INIT = 'event.afterFieldsInit';
 
     /**
-     * @var \Doctrine\DBAL\Connection
+     * @var Connection
      */
     protected static $defaultDbConn;
 
@@ -22,6 +23,11 @@ class Metadata
      * @var array
      */
     protected static $instances = [];
+
+    /**
+     * @var Connection
+     */
+    protected $dbConn;
 
     /**
      * @var string
@@ -584,35 +590,42 @@ class Metadata
     }
 
     /**
-     * @return \Doctrine\DBAL\Connection
+     * @return Connection
      */
     public function getDbConnection()
     {
-        return self::getDefaultDbConnection();
+        if ($this->dbConn === null) {
+            return self::getDefaultDbConnection();
+        } else {
+            return $this->dbConn;
+        }
     }
 
     /**
-     * @return \Doctrine\DBAL\Connection
+     * @param Connection $db
+     * @return $this
+     */
+    public function using(Connection $db)
+    {
+        $this->dbConn = $db;
+        if (self::$defaultDbConn === null) {
+            self::$defaultDbConn = $db;
+        }
+        return $this;
+    }
+
+    /**
+     * @return Connection
      */
     public static function getDefaultDbConnection()
     {
-//        if (null === self::$defaultDbConn) {
-//            self::$defaultDbConn = \Doctrine\DBAL\DriverManager::getConnection(array(
-//                'driver' => 'pdo_pgsql',
-//                'dbname' => 'sasha',
-//                'user' => 'sasha',
-//                'password' => '',
-//                'host' => 'localhost',
-//                //'port' => 6432,
-//            ));
-//        }
         return self::$defaultDbConn;
     }
 
     /**
-     * @param \Doctrine\DBAL\Connection $conn
+     * @param Connection $conn
      */
-    public static function setDefaultDbConnection(\Doctrine\DBAL\Connection $conn)
+    public static function setDefaultDbConnection(Connection $conn)
     {
         self::$defaultDbConn = $conn;
     }
