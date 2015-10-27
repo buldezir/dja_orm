@@ -24,7 +24,11 @@ class QuerySet extends BaseQuerySet
             $dataReady[$this->qi($key)] = $this->metadata->getField($key)->dbPrepValue($value);
         }
         $this->db->insert($this->qi($this->metadata->getDbTableName()), $dataReady);
-        return $this->db->lastInsertId($this->metadata->getPrimaryKeySequence());
+        if ($this->metadata->pk->auto_increment) {
+            return $this->db->lastInsertId($this->metadata->getPrimaryKeySequence());
+        } else {
+            return isset($data[$this->metadata->getPrimaryKey()]) ? $data[$this->metadata->getPrimaryKey()] : null;
+        }
     }
 
     /**

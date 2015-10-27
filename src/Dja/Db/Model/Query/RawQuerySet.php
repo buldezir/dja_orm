@@ -44,7 +44,7 @@ class RawQuerySet extends DataIterator
         $selectAllFields = [];
         $dbCols = $this->metadata->getDbColNames();
         foreach ($dbCols as $colName) {
-            $selectAllFields[] = $this->qi($colName);
+            $selectAllFields[] = 't.' . $this->qi($colName);
         }
 
         $query = str_ireplace([
@@ -52,7 +52,7 @@ class RawQuerySet extends DataIterator
             ':t',
         ], [
             'SELECT ' . implode(', ', $selectAllFields),
-            $this->qi($this->metadata->getDbTableName()),
+            $this->qi($this->metadata->getDbTableName()) . ' t',
         ], $query);
 
         // auto replace :field_name placeholders by their quoted db column names
@@ -86,15 +86,19 @@ class RawQuerySet extends DataIterator
     }
 
     /**
+     * @param bool|true $safe
      * @return $this
      */
-    public function returnObjects()
+    public function returnObjects($safe = true)
     {
         $cls = $this->metadata->getModelClass();
         $dbColsAsKeys = array_flip($this->metadata->getDbColNames());
-        $this->rowDataMapper = function ($row) use ($cls, $dbColsAsKeys) {
-            $row = array_intersect_key($row, $dbColsAsKeys);
-            return new $cls($row, false);
+        $this->rowDataMapper = function ($row) use ($cls, $dbColsAsKeys, $safe) {
+            if ($safe) {
+                return new $cls(array_intersect_key($row, $dbColsAsKeys), false);
+            } else {
+                return new $cls($row, false);
+            }
         };
         return $this;
     }
@@ -104,7 +108,7 @@ class RawQuerySet extends DataIterator
      */
     public function returnValues()
     {
-        $this->rowDataMapper = function (&$row) {
+        $this->rowDataMapper = function ($row) {
             return $row;
         };
         return $this;

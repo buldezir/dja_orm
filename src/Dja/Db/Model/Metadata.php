@@ -562,6 +562,7 @@ class Metadata
     }
 
     /**
+     * PK column
      * @return string
      */
     public function getPrimaryKey()
@@ -587,6 +588,25 @@ class Metadata
     public function getModelClass()
     {
         return $this->modelClassName;
+    }
+
+    /**
+     * @param $alias
+     * @param null $prefix
+     * @return string
+     */
+    public function colNamesAsSelectAliases($alias, $prefix = null)
+    {
+        if ($prefix === null) {
+            $prefix = $this->getDbTableName();
+        }
+        $selectAllFields = [];
+        $dbCols = $this->getDbColNames();
+        foreach ($dbCols as $colName) {
+            $as = $this->getDbConnection()->quoteIdentifier($prefix . '__' . $colName);
+            $selectAllFields[] = $alias . '.' . $colName . ' AS ' . $as;
+        }
+        return implode(', ', $selectAllFields);
     }
 
     /**

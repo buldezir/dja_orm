@@ -379,11 +379,13 @@ abstract class Model implements \ArrayAccess
                 $data = $this->toArray();
                 if ($this->metadata->pk->auto_increment) {
                     unset($data[$this->metadata->pk->db_column]);
-                }
-                $newPK = static::objects()->doInsert($data);
-                $this->data[$this->metadata->getPrimaryKey()] = $newPK;
-                if (empty($newPK)) {
-                    $this->isPersistable = false;
+                    $newPK = static::objects()->doInsert($data);
+                    $this->data[$this->metadata->getPrimaryKey()] = $newPK;
+                    if (empty($newPK)) {
+                        $this->isPersistable = false;
+                    }
+                } else {
+                    static::objects()->doInsert($data);
                 }
             } else {
                 $updData = $this->getChangedValues();
