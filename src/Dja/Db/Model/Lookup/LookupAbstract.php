@@ -101,13 +101,13 @@ abstract class LookupAbstract
 
     public function lookupContains(&$escapedField, &$rawValue, &$negate)
     {
-        $rawValue = '%' . $rawValue . '%';
+        $rawValue = '%' . str_replace('%', '\\%', $rawValue) . '%';
         return 'LIKE BINARY %s';
     }
 
     public function lookupIContains(&$escapedField, &$rawValue, &$negate)
     {
-        $rawValue = '%' . $rawValue . '%';
+        $rawValue = '%' . str_replace('%', '\\%', $rawValue) . '%';
         return 'LIKE %s';
     }
 

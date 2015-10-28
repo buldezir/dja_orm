@@ -326,6 +326,15 @@ function Expr($value)
 }
 
 /**
+ * @param $value
+ * @return \Dja\Db\Model\Fld
+ */
+function Fld($value)
+{
+    return new Dja\Db\Model\Fld($value);
+}
+
+/**
  * @param $className
  * @return bool
  */
