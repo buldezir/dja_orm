@@ -15,7 +15,7 @@ use Doctrine\DBAL\Types\Type;
  * @package Dja\Db\Model\Field
  *
  */
-class Int extends Base
+class Integer extends Base
 {
     public function __construct(array $options = array())
     {

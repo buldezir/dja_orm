@@ -46,7 +46,7 @@ class Creation
 
     /**
      * ->processQueueCallback(function (\Dja\Db\Model\Metadata $metadata, \Doctrine\DBAL\Schema\Table $table, array $sql, \Doctrine\DBAL\Connection $db) {})
-     * @param callable $callBack
+     * @param callable|\Closure $callBack
      */
     public function processQueueCallback(\Closure $callBack)
     {

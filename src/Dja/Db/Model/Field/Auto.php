@@ -8,7 +8,7 @@ namespace Dja\Db\Model\Field;
  *
  * auto increment primary key
  */
-class Auto extends Int
+class Auto extends Integer
 {
     public function __construct(array $options = array())
     {

@@ -752,7 +752,7 @@ class QueryBuilder
      *
      * @see where()
      */
-    public function andWhere($where)
+    public function andWhere()
     {
         $where = $this->getQueryPart('where');
         $args = func_get_args();
@@ -785,7 +785,7 @@ class QueryBuilder
      *
      * @see where()
      */
-    public function orWhere($where)
+    public function orWhere()
     {
         $where = $this->getQueryPart('where');
         $args = func_get_args();

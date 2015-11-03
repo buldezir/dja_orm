@@ -21,9 +21,9 @@ use Doctrine\DBAL\Types\Type;
 class Introspection
 {
     public static $dbType2FieldClass = [
-        Type::INTEGER => 'Int',
-        Type::BIGINT => 'Int',
-        Type::SMALLINT => 'Int',
+        Type::INTEGER => 'Integer',
+        Type::BIGINT => 'Integer',
+        Type::SMALLINT => 'Integer',
         Type::DECIMAL => 'Float',
         Type::FLOAT => 'Float',
         Type::STRING => 'Char',
@@ -76,7 +76,7 @@ class Introspection
 
     /**
      * will call with args ($tableName, $modelClassName, $code)
-     * @param callable $callBack
+     * @param callable|\Closure $callBack
      */
     public function processQueueCallback(\Closure $callBack)
     {
@@ -96,7 +96,7 @@ class Introspection
 
     /**
      * will call with args ($tableName, $modelClassName, $code)
-     * @param callable $callBack
+     * @param callable|\Closure $callBack
      */
     public function processQueueCallbackNoRel(\Closure $callBack)
     {
