@@ -6,12 +6,12 @@ use Doctrine\DBAL\Schema\Column;
 use Doctrine\DBAL\Types\Type;
 
 /**
- * Class Bool
+ * Class Boolean
  * @package Dja\Db\Model\Field
  *
  * tinyint for mysql, bool for postgresql
  */
-class Bool extends Base
+class Boolean extends Base
 {
     /**
      * @return \Doctrine\DBAL\Schema\Column

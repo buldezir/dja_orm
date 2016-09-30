@@ -25,13 +25,13 @@ class Introspection
         Type::BIGINT => 'Integer',
         Type::SMALLINT => 'Integer',
         Type::DECIMAL => 'Float',
-        Type::FLOAT => 'Float',
+        Type::FLOAT => 'Floating',
         Type::STRING => 'Char',
         Type::TEXT => 'Text',
         Type::DATETIME => 'DateTime',
         Type::DATE => 'Date',
         Type::TIME => 'Time',
-        Type::BOOLEAN => 'Bool',
+        Type::BOOLEAN => 'Boolean',
         Type::JSON_ARRAY => 'Json',
     ];
 

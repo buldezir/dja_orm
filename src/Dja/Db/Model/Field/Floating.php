@@ -6,10 +6,10 @@ use Doctrine\DBAL\Schema\Column;
 use Doctrine\DBAL\Types\Type;
 
 /**
- * Class Float
+ * Class Floating
  * @package Dja\Db\Model\Field
  */
-class Float extends Base
+class Floating extends Base
 {
     public function __construct(array $options = array())
     {

@@ -273,7 +273,7 @@ class Metadata
         $baseClass = __NAMESPACE__ . '\\Field\\Base';
         if (is_array($options)) {
             $fieldClass = array_shift($options);
-            if ($fieldClass{0} !== '\\') {
+            if (strpos($fieldClass, '\\') === false) {
                 $fieldClass = __NAMESPACE__ . '\\Field\\' . $fieldClass;
             }
             $options['name'] = $name;
