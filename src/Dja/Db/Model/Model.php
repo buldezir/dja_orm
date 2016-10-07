@@ -422,9 +422,7 @@ abstract class Model implements \ArrayAccess
     public function getChangedValues()
     {
         return array_udiff_assoc($this->data, $this->cleanData, function ($a, $b) {
-            if ($a === $b) {
-                return 0;
-            } else return 1;
+            return ($a === $b) ? 0 : 1;
         });
     }
 

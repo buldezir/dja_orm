@@ -62,6 +62,20 @@ function chunkedIterator(\Dja\Db\Model\Query\BaseQuerySet $qs, $chunkSize = 1000
 }
 
 /**
+ * @param \Dja\Db\Model\Query\QuerySet $qs
+ * @param int $depth
+ * @return array
+ */
+function querySetToArray(\Dja\Db\Model\Query\QuerySet $qs, int $depth = 1) : array
+{
+    $result = [];
+    foreach ($qs as $q) {
+        $result[] = $q->toArray($depth);
+    }
+    return $result;
+}
+
+/**
  * @param $value
  * @param null $default
  * @return null
@@ -382,7 +396,7 @@ function recursiveInclude($dir)
     foreach ($di as $file) {
         if ($file->isFile()) {
             //pr($file->getRealPath());
-            include $file->getRealPath();
+            include_once $file->getRealPath();
         }
     }
 }
