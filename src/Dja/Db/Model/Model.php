@@ -3,6 +3,7 @@
 namespace Dja\Db\Model;
 
 use Dja\Db\Model\Field\Relation;
+use Dja\Db\Model\Field\SingleRelation;
 use Dja\Db\Model\Field\Virtual;
 use Dja\Db\Model\Query\Manager;
 use Doctrine\DBAL\Connection;
@@ -376,7 +377,7 @@ abstract class Model implements \ArrayAccess
         }
         if ($this->eventDispatch(self::EVENT_BEFORE_SAVE)) {
             if ($this->isNewRecord) {
-                $data = $this->toArray();
+                $data = $this->data;
                 if ($this->metadata->pk->auto_increment) {
                     unset($data[$this->metadata->pk->db_column]);
                     $newPK = static::objects()->doInsert($data);
@@ -547,20 +548,25 @@ abstract class Model implements \ArrayAccess
     public function toArray($depth = 1)
     {
         $result = [];
-        foreach ($this->metadata->getLocalFields() as $field) {
-            $k = $field->name;
-            if ($field->isRelation()) {
-                if ($depth > 1) {
-                    if (isset($this->relationDataCache[$k])) {
-                        $result[$k] = $this->getLazyRelation($field)->toArray($depth - 1);
-                    } else {
-                        $result[$k] = isset($this->data[$field->db_column]) ? $this->data[$field->db_column] : null;
+        foreach (array_merge($this->metadata->getLocalFields(), $this->metadata->getVirtualFields()) as $field) {
+            /** @var Field\Base $field */
+            if (!$field->protected) {
+                $k = $field->name;
+                if ($field->isRelation()) {
+                    if ($field instanceof SingleRelation) {
+                        if ($depth > 1) {
+                            if (isset($this->relationDataCache[$k])) {
+                                $result[$k] = $this->getLazyRelation($field)->toArray($depth - 1);
+                            } else {
+                                $result[$k] = isset($this->data[$field->db_column]) ? $this->data[$field->db_column] : null;
+                            }
+                        } else {
+                            $result[$field->db_column] = isset($this->data[$field->db_column]) ? $this->data[$field->db_column] : null;
+                        }
                     }
                 } else {
-                    $result[$field->db_column] = isset($this->data[$field->db_column]) ? $this->data[$field->db_column] : null;
+                    $result[$k] = $this->__get($k);
                 }
-            } else {
-                $result[$k] = $this->__get($k);
             }
         }
         return $result;

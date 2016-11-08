@@ -62,7 +62,7 @@ function chunkedIterator(\Dja\Db\Model\Query\BaseQuerySet $qs, $chunkSize = 1000
 }
 
 /**
- * @param \Dja\Db\Model\Query\QuerySet $qs
+ * @param \Dja\Db\Model\Query\QuerySet|\Dja\Db\Model\Model[] $qs
  * @param int $depth
  * @return array
  */

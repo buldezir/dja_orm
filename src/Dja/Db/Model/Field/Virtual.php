@@ -41,7 +41,6 @@ class Virtual extends Base
      */
     public function getProcessedValue(Model $model)
     {
-        $getter = $this->getter;
-        return $getter($model);
+        return call_user_func($this->getter, $model);
     }
 }

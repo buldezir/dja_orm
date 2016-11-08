@@ -43,7 +43,8 @@ abstract class Base
         'unique' => false,
         'choices' => null,
         'default' => null,
-        'editable' => true,
+        'editable' => true, // allow manualy set value
+        'protected' => false, // include field in wildcard actions like ->toArray()
         'help_text' => '',
         'verbose_name' => null,
         'using' => null,
