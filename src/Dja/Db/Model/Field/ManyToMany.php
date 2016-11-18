@@ -81,13 +81,14 @@ class ManyToMany extends Relation implements ManyToManyRelation
         $to_field = $this->getRelationMetadata()->getDbTableName();
         //$db_table = $this->metadata->getDbTableName() . '_to_' . $this->getRelationMetadata()->getDbTableName();
         $db_table = $self_field . '_to_' . $to_field;
+        $fkClassName = ForeignKey::class;
         $classCode = "
         class {$throughClassName} extends \\Dja\\Db\\Model\\Model
         {
             protected static \$dbtable = '{$db_table}';
             protected static \$fields = [
-                '{$self_field}' => ['ForeignKey', 'relationClass' => '{$this->ownerClass}', 'db_column' => '{$this->self_field}'],
-                '{$to_field}' => ['ForeignKey', 'relationClass' => '{$this->relationClass}', 'db_column' => '{$this->to_field}'],
+                '{$self_field}' => ['{$fkClassName}', 'relationClass' => '{$this->ownerClass}', 'db_column' => '{$this->self_field}'],
+                '{$to_field}' => ['{$fkClassName}', 'relationClass' => '{$this->relationClass}', 'db_column' => '{$this->to_field}'],
             ];
         }
         ";
@@ -108,7 +109,7 @@ class ManyToMany extends Relation implements ManyToManyRelation
         $ownerClass = $this->getOption('ownerClass');
         if ($this->throughClass) {
             $options = array(
-                'ManyToMany',
+                ManyToMany::class,
                 'relationClass' => $ownerClass,
                 'self_field' => $this->to_field,
                 'to_field' => $this->self_field,
@@ -117,7 +118,7 @@ class ManyToMany extends Relation implements ManyToManyRelation
             );
         } else {
             $options = array(
-                'ManyToMany',
+                ManyToMany::class,
                 'relationClass' => $ownerClass,
                 'self_field' => $this->to_field,
                 'to_field' => $this->self_field,

@@ -12,7 +12,7 @@ class Multilang extends Virtual
         $this->_options['lang_default'] = null;
         $this->_options['lang'] = [];
         $this->_options['inner_field_options'] = [
-            'Char',
+            Char::class,
             'default' => '',
             'blank' => true
         ];

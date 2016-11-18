@@ -80,7 +80,7 @@ class ForeignKey extends Relation implements SingleRelation
         $ownerClass = $this->getOption('ownerClass');
         $relationClass = $this->getOption('relationClass');
         $options = array(
-            'ManyToOne',
+            ManyToOne::class,
             'relationClass' => $ownerClass,
             'self_field' => $this->to_field,
             'to_field' => $this->name,

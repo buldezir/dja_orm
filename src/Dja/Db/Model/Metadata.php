@@ -273,9 +273,9 @@ class Metadata
         $baseClass = __NAMESPACE__ . '\\Field\\Base';
         if (is_array($options)) {
             $fieldClass = array_shift($options);
-            if (strpos($fieldClass, '\\') === false) {
-                $fieldClass = __NAMESPACE__ . '\\Field\\' . $fieldClass;
-            }
+//            if (strpos($fieldClass, '\\') === false) {
+//                $fieldClass = __NAMESPACE__ . '\\Field\\' . $fieldClass;
+//            }
             $options['name'] = $name;
             $options['ownerClass'] = $this->modelClassName;
             /** @var Field\Base $fieldObj */
