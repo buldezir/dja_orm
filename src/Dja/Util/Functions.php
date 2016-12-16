@@ -64,13 +64,20 @@ function chunkedIterator(\Dja\Db\Model\Query\BaseQuerySet $qs, $chunkSize = 1000
 /**
  * @param \Dja\Db\Model\Query\QuerySet|\Dja\Db\Model\Model[] $qs
  * @param int $depth
+ * @param callable $filterFn  fn($row)
  * @return array
  */
-function querySetToArray(\Dja\Db\Model\Query\QuerySet $qs, int $depth = 1) : array
+function querySetToArray(\Dja\Db\Model\Query\QuerySet $qs, int $depth = 1, callable $filterFn = null) : array
 {
     $result = [];
-    foreach ($qs as $q) {
-        $result[] = $q->toArray($depth);
+    if ($filterFn) {
+        foreach ($qs as $q) {
+            $result[] = call_user_func($filterFn, $q->toArray($depth));
+        }
+    } else {
+        foreach ($qs as $q) {
+            $result[] = $q->toArray($depth);
+        }
     }
     return $result;
 }
